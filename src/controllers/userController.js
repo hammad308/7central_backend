@@ -31,118 +31,115 @@ exports.logout = userFactory.logout();
 
 
 
-exports.getAllUsers = catchAsync(async(req , res ,next) => {
-    const query = { isSuperAdmin : false,role:null };
-    handlerFactory.getAll(User , '' , logger , query)(req , res , next)
+exports.getAllUsers = catchAsync(async (req, res, next) => {
+  const query = { isSuperAdmin: false, role: null };
+  handlerFactory.getAll(User, '', logger, query)(req, res, next)
 });
-exports.getAllAdminUsers = catchAsync(async(req , res ,next) => {
-    const query = { isSuperAdmin : false,role: { $ne: null } };
-    handlerFactory.getAll(User , "role" , logger , query)(req , res , next)
+exports.getAllAdminUsers = catchAsync(async (req, res, next) => {
+  const query = { isSuperAdmin: false, role: { $ne: null } };
+  handlerFactory.getAll(User, "role", logger, query)(req, res, next)
 });
 
-exports.getSingleUser = handlerFactory.getOne(User , '' , logger);
-exports.updateUser = handlerFactory.updateOne(User , logger);
-exports.deleteUser  = handlerFactory.deleteOne(User , logger);
+exports.getSingleUser = handlerFactory.getOne(User, '', logger);
+exports.updateUser = handlerFactory.updateOne(User, logger);
+exports.deleteUser = handlerFactory.deleteOne(User, logger);
 
 
 const updateProfileValidations = Joi.object({
-    country: Joi.string().optional(),    
-    gender: Joi.string()
-        .valid('male', 'female', 'other')
-        .optional(), 
-    dateOfBirth: Joi.string().optional()
+  country: Joi.string().optional(),
+  gender: Joi.string()
+    .valid('male', 'female', 'other')
+    .optional(),
+  dateOfBirth: Joi.string().optional()
 }).strict();
 
-exports.updateProfile = catchAsync(async(req , res , next) => {
-    const user = req.user;
-    const { error } = updateProfileValidations.validate(req.body);
-    if(error) {
-        return next(new AppError(error.details[0].message , 400))
-    }
+exports.updateProfile = catchAsync(async (req, res, next) => {
+  const user = req.user;
+  const { error } = updateProfileValidations.validate(req.body);
+  if (error) {
+    return next(new AppError(error.details[0].message, 400))
+  }
 
-    if(req.file) {
-        req.body.image = req.file.location
-    }
+  if (req.file) {
+    req.body.image = req.file.location
+  }
 
-    const updatedUser = await User.findByIdAndUpdate(user?._id , req.body , {
-        runValidators : true ,
-        new : true 
-    }).select('-password');
+  const updatedUser = await User.findByIdAndUpdate(user?._id, req.body, {
+    runValidators: true,
+    new: true
+  }).select('-password');
 
-    sendSuccessResponse(res , 200 , logger , {
-        message : "Profile updated successfully." ,
-        doc : updatedUser
-    })
+  sendSuccessResponse(res, 200, logger, {
+    message: "Profile updated successfully.",
+    doc: updatedUser
+  })
 });
 
-exports.sendContactEmail = catchAsync(async(req , res , next) => {
-    // const { error } = contactValidations.validate(req.body);
-    // if(error) {
-    //     return next(new AppError(error.details[0].message , 400))
-    // }
+exports.sendContactEmail = catchAsync(async (req, res, next) => {
+  // const { error } = contactValidations.validate(req.body);
+  // if(error) {
+  //     return next(new AppError(error.details[0].message , 400))
+  // }
 
-    try {
-        const resp = await sendContactEmail(req.body);
-        sendSuccessResponse(res , 200 , logger , {
-            message : 'Message sent successfully.'
-        })
-    } catch (error) {
-        console.log({ error })
-        return next(new AppError('Somehting went wrong.' , 500))
-    }
-})
-
-
-exports.deleteMyAccount = catchAsync(async(req , res , next) => {
-    const userId = req.user._id;
-    await User.findByIdAndUpdate(userId , { status : 'deleted'});
-    sendSuccessResponse(res , 200 , logger , {
-        message : 'Your account deactivated successfully.'
+  try {
+    const resp = await sendContactEmail(req.body);
+    sendSuccessResponse(res, 200, logger, {
+      message: 'Message sent successfully.'
     })
+  } catch (error) {
+    console.log({ error })
+    return next(new AppError('Somehting went wrong.', 500))
+  }
 })
 
 
-exports.dashboardStats = catchAsync(async(req , res , next) => {
-    const { period, start, end } = req.query;
-     const { from, to } = resolveRange({ period, start, end });
+exports.deleteMyAccount = catchAsync(async (req, res, next) => {
+  const userId = req.user._id;
+  await User.findByIdAndUpdate(userId, { status: 'deleted' });
+  sendSuccessResponse(res, 200, logger, {
+    message: 'Your account deactivated successfully.'
+  })
+})
 
+
+exports.dashboardStats = catchAsync(async (req, res, next) => {
+  const { period, start, end } = req.query;
+  const { from, to } = resolveRange({ period, start, end });
   // A) Basic counts (global – not date-filtered)
-const inventoryStats = await Inventory.aggregate([
-  {
-    $facet: {
-      totalActiveInventory: [
-        { $match: { status: { $nin: ['deleted'] } }},
-        { $count: "count" }
-      ],
-      availableForBooking: [
-        { $match: { status: "not_assigned" }},
-        { $count: "count" }
-      ],
-      onInstallments: [
-        { $match: { status: { $in: ['assigned', 'in_installment'] }}},
-        { $count: "count" }
-      ],
-      paymentCompletedInventories: [
-        { $match: { status: { $in: ['full_paid', 'hand_over'] }}},
-        { $count: "count" }
-      ]
+  const inventoryStats = await Inventory.aggregate([
+    {
+      $facet: {
+        totalActiveInventory: [
+          { $match: { status: { $nin: ['deleted'] } } },
+          { $count: "count" }
+        ],
+        availableForBooking: [
+          { $match: { status: "not_assigned" } },
+          { $count: "count" }
+        ],
+        onInstallments: [
+          { $match: { status: { $in: ['assigned', 'in_installment'] } } },
+          { $count: "count" }
+        ],
+        paymentCompletedInventories: [
+          { $match: { status: { $in: ['full_paid', 'hand_over'] } } },
+          { $count: "count" }
+        ]
+      }
     }
+  ]);
+  // Extract values (Mongo returns arrays)
+  function getCount(key) {
+    return inventoryStats[0][key]?.[0]?.count || 0;
   }
-]);
+  const totalActiveInventory = getCount("totalActiveInventory");
+  const availableForBooking = getCount("availableForBooking");
+  const onInstallmentsInventories = getCount("onInstallments");
+  const paymentCompletedInventories = getCount("paymentCompletedInventories");
 
-// Extract values (Mongo returns arrays)
-function getCount(key) {
-  return inventoryStats[0][key]?.[0]?.count || 0;
-}
-
-const totalActiveInventory       = getCount("totalActiveInventory");
-const availableForBooking        = getCount("availableForBooking");
-const onInstallmentsInventories             = getCount("onInstallments");
-const paymentCompletedInventories= getCount("paymentCompletedInventories");
-
-// Total customers can be counted separately (different collection)
-const totalCustomers = await Customer.countDocuments({status: { $ne: 'deleted' }});
-const pendingPaymentsForApproval =  await   Payment.countDocuments({ status: 'pending', createdAt: { $gte: from, $lte: to } });
+  // Total customers can be counted separately (different collection)
+  const totalCustomers = await Customer.countDocuments({ status: { $ne: 'deleted' } });
+  const pendingPaymentsForApproval = await Payment.countDocuments({ status: 'pending', createdAt: { $gte: from, $lte: to } });
 
 
   // B) Filter installments by date & status
@@ -157,7 +154,7 @@ const pendingPaymentsForApproval =  await   Payment.countDocuments({ status: 'pe
       { status: 'paid', paidAt: { $gte: from, $lte: to } },
       // Pending/overdue ones whose dueDate is in this window
       {
-        status: { $in: ['un-paid', 'overdue','pertially_paid','defaulted'] },
+        status: { $in: ['un-paid', 'overdue', 'pertially_paid', 'defaulted'] },
         dueDate: { $gte: from, $lte: to }
       }
     ]
@@ -191,7 +188,7 @@ const pendingPaymentsForApproval =  await   Payment.countDocuments({ status: 'pe
   const totalReceiptsAmount = paid.amount + pendingAmount;
 
   // C) Prepare response matching your UI cards
-  const data= {
+  const data = {
     range: {
       period,
       from,
@@ -201,17 +198,17 @@ const pendingPaymentsForApproval =  await   Payment.countDocuments({ status: 'pe
     headline: {
       totalCustomers,
       totalActiveInventory,
-        availableForBooking,
-        onInstallmentsInventories:onInstallmentsInventories,
-        paymentCompletedInventories,
+      availableForBooking,
+      onInstallmentsInventories: onInstallmentsInventories,
+      paymentCompletedInventories,
       paidInstallments: paid.count,
       pendingInstallments: pendingCount,
       pendingPaymentsForApproval
     },
 
     installments: {
-      totalInstallmentsCount:totalReceiptsCount,
-      totalInstallmentsAmount:totalReceiptsAmount,
+      totalInstallmentsCount: totalReceiptsCount,
+      totalInstallmentsAmount: totalReceiptsAmount,
 
       paid: {
         count: paid.count,
@@ -230,19 +227,18 @@ const pendingPaymentsForApproval =  await   Payment.countDocuments({ status: 'pe
   };
 
 
-    sendSuccessResponse(res , 200 , logger , {
-        ...data
-    })
+  sendSuccessResponse(res, 200, logger, {
+    ...data
+  })
 })
 
 
 
 
 
-exports.getInventorySalesSeries  = catchAsync(async(req , res , next) => {
-    const { period, start, end } = req.query;
-    const { from, to } = resolveRange({ period, start, end });
-
+exports.getInventorySalesSeries = catchAsync(async (req, res, next) => {
+  const { period, start, end } = req.query;
+  const { from, to } = resolveRange({ period, start, end });
   // group sales (bookings) by month
   const raw = await Sale.aggregate([
     {
@@ -263,23 +259,19 @@ exports.getInventorySalesSeries  = catchAsync(async(req , res , next) => {
     },
     { $sort: { '_id.year': 1, '_id.month': 1 } }
   ]);
-
   // Map to year-month string -> data
   const map = new Map();
   raw.forEach(row => {
-    const ym = `${row._id.year}-${String(row._id.month).padStart(2,'0')}`;
+    const ym = `${row._id.year}-${String(row._id.month).padStart(2, '0')}`;
     map.set(ym, { count: row.count, amount: row.amount });
   });
-
   // Build continuous month list between from..to (for chart gaps = 0)
   const buckets = [];
   let cursor = dayjs(from).startOf('month');
   const endMonth = dayjs(to).startOf('month');
-
   while (cursor.isSame(endMonth) || cursor.isBefore(endMonth)) {
-    const ym = `${cursor.year()}-${String(cursor.month() + 1).padStart(2,'0')}`;
+    const ym = `${cursor.year()}-${String(cursor.month() + 1).padStart(2, '0')}`;
     const monthName = cursor.format('MMM'); // Jan, Feb, ...
-
     const entry = map.get(ym) || { count: 0, amount: 0 };
     buckets.push({
       key: ym,
@@ -289,19 +281,15 @@ exports.getInventorySalesSeries  = catchAsync(async(req , res , next) => {
       totalSold: entry.count,
       totalAmount: entry.amount
     });
-
     cursor = cursor.add(1, 'month');
   }
-
-  const data= {
+  const data = {
     range: { period, from, to },
     buckets
   };
-
-
-    sendSuccessResponse(res , 200 , logger , {
-        ...data
-    })
+  sendSuccessResponse(res, 200, logger, {
+    ...data
+  })
 })
 
 function resolveRange({ period, start, end }) {

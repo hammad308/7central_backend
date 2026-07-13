@@ -1,5 +1,5 @@
 const menus = {
-    user : 'User' ,
+    user: 'User',
     customers: 'Customer',
     projects: 'Project',
     sectors: 'Sector',
@@ -8,13 +8,10 @@ const menus = {
     installments: 'Installment',
     document: 'Document',
     payment: 'Payment',
-
-
-
-    // subCategory : 'Sub-Cat' ,
-    // cast : 'Cast' ,
-    // ads : 'ADS' ,
-    // songs : 'Content'
+    notification: "Notification",
+    admin:"Admin",
+    report:"Report",
+    sale:"Sale"
 }
 
 module.exports = menus;

@@ -21,17 +21,20 @@ const fs = require("fs");
 const csv = require("csv-parser");
 const { DateTime } = require("luxon");
 const Installment = require("../models/installmentModel");
-    const popItems = [
-        { path: 'project', select: 'title' },
-        { path: 'sector', select: 'title' },
-        { path: 'currentSale', populate: 
-          [{ path: 'buyers' ,select:" name fatherName cnic phoneNumber email "} ,
-            { path: 'plan' }
-          ]},
-        {
-        path : 'createdBy',
-        select: 'username image email -_id'}
+const popItems = [
+  { path: 'project', select: 'title' },
+  { path: 'sector', select: 'title' },
+  {
+    path: 'currentSale', populate:
+      [{ path: 'buyers', select: " name fatherName cnic phoneNumber email " },
+      { path: 'plan' }
       ]
+  },
+  {
+    path: 'createdBy',
+    select: 'username image email -_id'
+  }
+]
 
 exports.createInventory = catchAsync(async (req, res, next) => {
   const { error } = inventoryValidationSchema.validate(req.body);
@@ -64,40 +67,37 @@ exports.createInventory = catchAsync(async (req, res, next) => {
 
 // ALL POPULATE OBJECTS
 const popObj = [
-        { path: 'currentSale', populate: { path: 'buyers' ,select:" name fatherName cnic phoneNumber email "} },
-    { path: 'project', },
-    { path: 'sector', },
+  { path: 'currentSale', populate: { path: 'buyers', select: " name fatherName cnic phoneNumber email " } },
+  { path: 'project', },
+  { path: 'sector', },
 
 ];
 
 exports.getAllInventories = catchAsync(async (req, res, next) => {
-    const { project,sector,type,status } = req.query;
-    const query = {};
-
-    if (project) {
-      query.project = project;
-    } else if (sector) {
-      query.sector = sector;
-    }
-    else if (type) {
-      query.type = type;
-    }
-    else if (status) {
-      query.status = status;
-    }
-
-
-    handlerFactory.getAll(Inventory, popItems, logger, query)(req, res, next)
+  const { project, sector, type, status } = req.query;
+  const query = {};
+  if (project) {
+    query.project = project;
+  } else if (sector) {
+    query.sector = sector;
+  }
+  else if (type) {
+    query.type = type;
+  }
+  else if (status) {
+    query.status = status;
+  }
+  handlerFactory.getAll(Inventory, popItems, logger, query)(req, res, next)
 });
 
 
-exports.createCSVUploadOfInventory= catchAsync(async (req, res, next) => {
-  const validData= req.body;
+exports.createCSVUploadOfInventory = catchAsync(async (req, res, next) => {
+  const validData = req.body;
   // if (error) {
   //   return next(new AppError(error.details[0].message, 422));
   // }
 
-  const existingProject= await Project.findById(validData.project);
+  const existingProject = await Project.findById(validData.project);
 
   if (!existingProject) {
     return sendErrorResponse(res, 422, logger, {
@@ -107,7 +107,7 @@ exports.createCSVUploadOfInventory= catchAsync(async (req, res, next) => {
 
   let existingTermination = null;
 
-   const existingSector = await Sector.findById(validData.sector);
+  const existingSector = await Sector.findById(validData.sector);
 
   // Read CSV file
   const base64String = validData.csvDataURI.split(",")[1];
@@ -157,36 +157,36 @@ exports.createCSVUploadOfInventory= catchAsync(async (req, res, next) => {
         for (let el of results) {
 
           const newIDNumber = await getNextInSequence("inventories");
-  const longAutoIncrementId = getLongAutoIncrementId(
-    PREFIX_INVENTORY_AUTOINCREMENTID,
-    newIDNumber
-  );
+          const longAutoIncrementId = getLongAutoIncrementId(
+            PREFIX_INVENTORY_AUTOINCREMENTID,
+            newIDNumber
+          );
           let data = {
             autoIncrementId: newIDNumber,
             longAutoIncrementId: longAutoIncrementId,
-            project:existingProject._id, sector:existingSector._id, 
-            createdBy: req.user._id,...el};
-            insertMany.push(data);
+            project: existingProject._id, sector: existingSector._id,
+            createdBy: req.user._id, ...el
+          };
+          insertMany.push(data);
 
-         
+
         }
 
         let numbersCreatedCount = 0;
 
         try {
-          
+
           console.info(`About to create inventories: ${insertMany.length}`);
           console.info(`About to create inventories: ${insertMany}`);
 
           const newNumbers = await Inventory.insertMany(insertMany);
 
-      
-  sendSuccessResponse(res, 201, logger, {
-            doc: {
-              message: `Numbers creation in progress! Please wait...`,
-            },
+
+          sendSuccessResponse(res, 201, logger, {
+            message: `Numbers creation in progress! Please wait...`,
+            
           });
-        
+
         } catch (err) {
           console.error(err);
           logger.error(err.message);
@@ -225,24 +225,24 @@ exports.createCSVUploadOfInventory= catchAsync(async (req, res, next) => {
     });
 });
 
-exports.inventoryPaymentStats = catchAsync(async(req , res , next) => {
-    const { inventory } = req.query;
-    
-const checkInventory = await Inventory.findById(inventory);
+exports.inventoryPaymentStats = catchAsync(async (req, res, next) => {
+  const { inventory } = req.query;
 
-if (!checkInventory) {
-  return next(new AppError('Inventory not found', 404));
-}
+  const checkInventory = await Inventory.findById(inventory);
+
+  if (!checkInventory) {
+    return next(new AppError('Inventory not found', 404));
+  }
 
   const matchStage = {
-    inventory:checkInventory._id,
+    inventory: checkInventory._id,
     $or: [
       // Paid ones in this window
       { status: 'paid', },
       // Pending/overdue ones whose dueDate is in this window
       {
-        status: { $in: ['un-paid', 'overdue','pertially_paid','defaulted'] },
-       
+        status: { $in: ['un-paid', 'overdue', 'pertially_paid', 'defaulted'] },
+
       }
     ]
   };
@@ -275,14 +275,14 @@ if (!checkInventory) {
   const totalReceiptsAmount = paid.amount + pendingAmount;
 
   // C) Prepare response matching your UI cards
-  const data= {
+  const data = {
     totalInstallments: totalReceiptsCount,
     totalAmount: totalReceiptsAmount,
     paidInstallments: paid.count,
 
     installments: {
-      totalInstallmentsCount:totalReceiptsCount,
-      totalInstallmentsAmount:totalReceiptsAmount,
+      totalInstallmentsCount: totalReceiptsCount,
+      totalInstallmentsAmount: totalReceiptsAmount,
 
       paid: {
         count: paid.count,
@@ -301,12 +301,12 @@ if (!checkInventory) {
   };
 
 
-    sendSuccessResponse(res , 200 , logger , {
-        ...data
-    })
+  sendSuccessResponse(res, 200, logger, {
+    ...data
+  })
 })
 
 
-exports.getSingle = handlerFactory.getOne(Inventory ,popItems, logger);
-exports.update = handlerFactory.updateOne(Inventory , logger);
-exports.deleteInventory = handlerFactory.deleteOne(Inventory , logger);
+exports.getSingle = handlerFactory.getOne(Inventory, popItems, logger);
+exports.update = handlerFactory.updateOne(Inventory, logger);
+exports.deleteInventory = handlerFactory.deleteOne(Inventory, logger);

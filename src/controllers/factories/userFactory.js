@@ -359,7 +359,6 @@ exports.adminLogin = () => catchAsync(async (req, res, next) => {
             )
         );
     }
-
     // Check if user is deleted
     if (user.status === "deleted") {
         return next(
@@ -369,9 +368,7 @@ exports.adminLogin = () => catchAsync(async (req, res, next) => {
             )
         );
     }
-
     const token = signToken({ _id: user._id, pass: user.password });
-
     delete user._doc.password;
     delete user._doc.accountType;
     delete user._doc.fcm_token;
@@ -409,8 +406,6 @@ exports.adminRegisterUser = () => catchAsync( async (req, res, next) => {
             )
         );
     }
-
-
     const role = await Role.findOne();
     try {
         const user = await User.create({
@@ -423,8 +418,6 @@ exports.adminRegisterUser = () => catchAsync( async (req, res, next) => {
                 emailTokenExpire: null,
             },
         });
-
-
         return sendSuccessResponse(res, 200, logger, {
             message: "Admin registered user successfully.",
         });
@@ -438,28 +431,22 @@ exports.adminRegisterUser = () => catchAsync( async (req, res, next) => {
 
 exports.forgotPassword = () => catchAsync(async (req, res, next) => {
     const { email } = req.body;
-
     if (!email) {
         return next(new AppError("Please provide an email address.", 400));
     }
-
     const user = await User.findOne({ email });
     if (!user) {
         return next(
             new AppError("There is no user with that email address.", 404)
         );
     }
-
     const otp = await generateOtp();
-
     user.verification.resetPasswordToken = otp;
     user.verification.resetPasswordTokenExpire = moment().add(10, "minutes");
     await user.save({ validateBeforeSave: false });
-
     // Send OTP to user's email
     try {
         await sendForgotPasswordEmail(otp, user);
-
         return sendSuccessResponse(res, 200, logger, {
             message: "OTP sent to your email. Please check your inbox.",
         });

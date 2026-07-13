@@ -169,13 +169,11 @@ exports.send = catchAsync(async (req, res) => {
 
   if (campaign.audienceType === "all") {
     customers = await Customer.find({
-    //   isDeleted: false,
       status: { $ne: "deleted" },
     }).select("name username email phone phoneNumber phoneNumber2 whatsappNumber whatsappNumber2");
   } else {
     customers = await Customer.find({
       _id: { $in: campaign.customers || [] },
-    //   isDeleted: false,
       status: { $ne: "deleted" },
     }).select("name username email phone phoneNumber phoneNumber2 whatsappNumber whatsappNumber2");
   }

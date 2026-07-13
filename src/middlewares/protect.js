@@ -8,7 +8,7 @@ exports.protect = catchAsync(async (req, res, next) => {
     if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
         token = req.headers.authorization.split(' ')[1];
     }
-    
+
     if (!token) {
         return next(new AppError("you're not logged in. please login to get access", 401))
     }
@@ -16,11 +16,11 @@ exports.protect = catchAsync(async (req, res, next) => {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         const { _id, pass } = decoded;
         let user = await User.findById(_id).populate("role");
-        
-        if(!user){
-            return next(new AppError('Access denied. UnAuthorized user.' , 401));
+
+        if (!user) {
+            return next(new AppError('Access denied. UnAuthorized user.', 401));
         }
-        
+
         if (user.status === 'blocked') {
             return next(new AppError('Your account is blocked. If you believe this is an error or have any concerns, please contact our support team..', 401))
         }
@@ -47,26 +47,36 @@ exports.isSuperAdmin = (req, res, next) => {
 };
 
 
-exports.checkAccess = (menu) => async (req, res, next) => {
-    try {
-        const user = req.user;
-        
-        if(user.isSuperAdmin) {
-            return next();
-        }
-
-        if(!user.role) {
-            return next(new AppError('You do not have permission to perform this action.', 403));
-        }
-
-        const hasAccess = user.role.permissions.some((perm) => perm.menu === menu );
-    
-        if (!hasAccess) {
-            return next(new AppError('You do not have permission to perform this action.', 403));
-        }
-    
-        next();
-    } catch (err) {
-        next(new AppError(err.message || 'Internal server error.', 403))
+exports.checkAccess = (menu) => (req, res, next) => {
+    const user = req.user;
+    if (user?.isSuperAdmin) {
+        return next();
     }
+    if (!user?.role) {
+        return next(new AppError('You do not have permission to perform this action.', 403));
+    }
+    const hasAccess = user.role.permissions.some((perm) => perm.menu === menu);
+    if (!hasAccess) {
+        return next(new AppError('You do not have permission to perform this action.', 403));
+    }
+    next();
 };
+
+exports.checkActionAccess = (menu, action = "read") => (req, res, next) => {
+    const user = req.user;
+    if (user?.isSuperAdmin) {
+        return next();
+    }
+    if (!user?.role) {
+        return next(new AppError("You do not have permission to perform this action", 403));
+    }
+    const permission = user.role.permissions.find((perm) => perm.menu === menu);
+    if (!permission) {
+        return next(new AppError("You do not have permission to access this menu.", 403));
+    }
+    const hasAccess = permission.actions?.[action];
+    if (!hasAccess) {
+        return next(new AppError(`You do not have permission to perform ${action} on ${menu}`, 403));
+    }
+    next();
+}

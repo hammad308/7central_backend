@@ -29,7 +29,7 @@ const {
 } = require("../controllers/userController");
 const upload = require("../middlewares/multer");
 const { printRequest } = require("../logger")("USER_CONTROLLER");
-const { protect , checkAccess, isSuperAdmin } = require('../middlewares/protect');
+const { protect , checkActionAccess, isSuperAdmin } = require('../middlewares/protect');
 const setUploadDirectory = require("../middlewares/setUploadDirectory");
 
 router.post("/login", printRequest, userLogin);
@@ -55,17 +55,14 @@ router.put("/update-password", printRequest, protect, updatePassword);
 router.put("/save-fcm-token", printRequest, protect, saveFcmToken);
 router.get("/logout", printRequest, logout);
 router.post('/send-contact-message' , printRequest , sendContactEmail)
-
-router.get('/' , printRequest , protect , checkAccess(menus.user) , getAllUsers);
+router.get('/' , printRequest , protect , checkActionAccess(menus.user,"list") , getAllUsers);
 router.get('/dashboard-stats' , printRequest , protect  , dashboardStats);
 router.get('/dashboard-inventory-sale-stats' , printRequest , protect  , getInventorySalesSeries);
 router.get('/all-admins' , printRequest , protect , isSuperAdmin, getAllAdminUsers);
 router.delete('/delete-my-account' , printRequest , protect , deleteMyAccount)
-
 router.route('/:id')
-    .get(printRequest , protect , checkAccess(menus.user) , getSingleUser)
-    .put(printRequest , protect , checkAccess(menus.user) , updateUser)
+    .get(printRequest , protect , checkActionAccess(menus.user,"read") , getSingleUser)
+    .put(printRequest , protect , checkActionAccess(menus.user,"update") , updateUser)
     .delete(printRequest , protect , isSuperAdmin , deleteUser)
-
 
 module.exports = router;

@@ -1,21 +1,21 @@
 const {
-    createNotification , 
-    getAllNotifications , 
-    getMyNotifications , 
+    createNotification,
+    getAllNotifications,
+    getMyNotifications,
     deleteNotification
 } = require("../controllers/notificationController");
-const { protect } = require("../middlewares/protect");
+const menus = require("../constants/menus.constants");
+const { protect, checkActionAccess } = require("../middlewares/protect");
 const router = require("express").Router();
 const { printRequest } = require("../logger")("NOTIFICATION_CONTROLLER");
 
 
 router.route("/")
-    .post(printRequest , protect , createNotification)
-    .get(printRequest , protect , getAllNotifications)
+    .post(printRequest, protect, checkActionAccess(menus.notification, "create"), createNotification)
+    .get(printRequest, protect, checkActionAccess(menus.notification, "list"), getAllNotifications)
 
-router.get('/my' , printRequest , protect , getMyNotifications);
+router.get('/my', printRequest, protect, getMyNotifications);
 
-router.route('/:id')
-    .delete(printRequest , protect , deleteNotification)
+router.delete("/:id", printRequest, protect, checkActionAccess(menus.notification, "delete"), deleteNotification)
 
 module.exports = router;

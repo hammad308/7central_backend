@@ -4,12 +4,13 @@ const {
     reporting,
 } = require("../controllers/reportController");
 const { printRequest } = require("../logger")("SECTOR_CONTROLLER");
-const { protect , checkAccess } = require('../middlewares/protect');
+const { protect , checkActionAccess } = require('../middlewares/protect');
 
 router.route('/')
     .get(
         printRequest ,
-        // protect , 
+        protect , 
+        checkActionAccess(menus.report,"read"),
         reporting
     );
     

@@ -10,21 +10,22 @@ const sendNotification = require('../utils/notifications/sendNotification')
 
 const popObj = [
     {
-        path : 'user' ,
-        select: 'username image email -_id'}
-    
+        path: 'user',
+        select: 'username image email -_id'
+    }
+
 ]
 
-exports.createNotification = catchAsync(async(req , res , next) => {
-    const { title , body , type } = req.body;
+exports.createNotification = catchAsync(async (req, res, next) => {
+    const { title, body, type } = req.body;
 
     const { error } = notificationValidations.validate(req.body);
-    if(error) {
-        return next(new AppError(error.details[0].message , 400))
+    if (error) {
+        return next(new AppError(error.details[0].message, 400))
     }
 
     let tokens;
-    if(type === 'all') {
+    if (type === 'all') {
         const users = await User.find({}).select('fcm_token');
         const tokensSet = new Set();
         users.forEach((user) => {
@@ -40,16 +41,17 @@ exports.createNotification = catchAsync(async(req , res , next) => {
 
 
     // send push notification
-    sendNotification(title , body , tokens);
-    await Notification.create(req.body);
+    sendNotification(title, body, tokens);
+    const doc = await Notification.create(req.body);
 
-    sendSuccessResponse(res , 200 , logger , {
-        message : 'Notification sent.'
+    sendSuccessResponse(res, 200, logger, {
+        message: 'Notification sent.',
+        doc
     })
 });
 
-exports.getAllNotifications = handlerFactory.getAll(Notification , popObj , logger);
-exports.getMyNotifications = catchAsync(async(req , res, next) => {
+exports.getAllNotifications = handlerFactory.getAll(Notification, popObj, logger);
+exports.getMyNotifications = catchAsync(async (req, res, next) => {
     let query = {
         $or: [
             { type: 'all' },
@@ -57,7 +59,7 @@ exports.getMyNotifications = catchAsync(async(req , res, next) => {
         ]
     }
 
-    handlerFactory.getAll(Notification , '' , logger , query)(req , res , next)
+    handlerFactory.getAll(Notification, '', logger, query)(req, res, next)
 });
 
-exports.deleteNotification = handlerFactory.removeFromDb(Notification , logger);
+exports.deleteNotification = handlerFactory.removeFromDb(Notification, logger);

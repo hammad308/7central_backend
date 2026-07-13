@@ -39,14 +39,11 @@ exports.reporting = catchAsync(async (req, res, next) => {
   if (error) {
     return next(new AppError(error.details[0].message, 400));
   }
-
   const { type } = req.query;
-
   const { from, to } = resolveRange({
     start: req.query.start,
     end: req.query.end
   });
-
   const projectId = asObjectId(req.query.project);
   const sectorId = asObjectId(req.query.sector);
   const inventoryId = asObjectId(req.query.inventory);
@@ -57,12 +54,9 @@ exports.reporting = catchAsync(async (req, res, next) => {
   ============================================================ */
   if (type === 'due_installments') {
     const dueStatuses = ['un-paid', 'overdue', 'pertially_paid', 'defaulted'];
-
     const match = { status: { $in: dueStatuses } };
-
     if (from) match.dueDate = { $gte: from, $lte: to };
     else match.dueDate = { $lte: to };
-
     if (inventoryId) match.inventory = inventoryId;
 
     const pipeline = [
@@ -101,13 +95,11 @@ exports.reporting = catchAsync(async (req, res, next) => {
           status: 1,
           paidAt: 1,
           paidAmount: 1,
-
           inventory: '$inventoryDoc._id',
           inventoryFullNumber: '$inventoryDoc.fullNumber',
           inventoryStatus: '$inventoryDoc.status',
           sector: '$inventoryDoc.sector',
           project: '$inventoryDoc.project',
-
           sale: '$saleDoc._id',
           buyersDisplayName: '$saleDoc.buyersDisplayName'
         }
@@ -125,7 +117,8 @@ exports.reporting = catchAsync(async (req, res, next) => {
       },
       {
         title: 'Due Installments',
-         count: 0, totalAmount: 0 }
+        count: 0, totalAmount: 0
+      }
     );
 
     return sendSuccessResponse(res, 200, logger, {
@@ -178,7 +171,6 @@ exports.reporting = catchAsync(async (req, res, next) => {
           project: 1,
           sector: 1,
           sectorTitle: '$sectorDoc.title',
-
           status: 1,
           plotNumber: 1,
           number: 1,
@@ -188,7 +180,6 @@ exports.reporting = catchAsync(async (req, res, next) => {
           significance: 1,
           actualPrice: 1,
           createdAt: 1,
-
           currentSale: '$saleDoc._id',
           buyersDisplayName: '$saleDoc.buyersDisplayName',
           sellingPrice: '$saleDoc.sellingPrice',
@@ -208,7 +199,8 @@ exports.reporting = catchAsync(async (req, res, next) => {
       },
       {
         title: 'Sold Inventories',
-        count: 0, totalSellingPrice: 0 }
+        count: 0, totalSellingPrice: 0
+      }
     );
 
     return sendSuccessResponse(res, 200, logger, {
@@ -269,197 +261,197 @@ exports.reporting = catchAsync(async (req, res, next) => {
     ];
 
     const byMethod = await Payment.aggregate(pipeline);
-const totalAmount = byMethod.reduce((s, r) => s + r.amountTotal, 0);
-const otherAmount = byMethod.find(r => r.method === 'other')?.amountTotal ?? 0;
-const netCashReceived = totalAmount - otherAmount;
+    const totalAmount = byMethod.reduce((s, r) => s + r.amountTotal, 0);
+    const otherAmount = byMethod.find(r => r.method === 'other')?.amountTotal ?? 0;
+    const netCashReceived = totalAmount - otherAmount;
 
-return sendSuccessResponse(res, 200, logger, {
-  type,
-  range: { from, to },
-  filters: { project: projectId, sector: sectorId, inventory: inventoryId, method: method || null },
-  summary: { title: 'Payments Received', totalAmount, otherAmount, netCashReceived, byMethod }
-});
+    return sendSuccessResponse(res, 200, logger, {
+      type,
+      range: { from, to },
+      filters: { project: projectId, sector: sectorId, inventory: inventoryId, method: method || null },
+      summary: { title: 'Payments Received', totalAmount, otherAmount, netCashReceived, byMethod }
+    });
 
   }
 
   /* ============================================================
      4) FUTURE CASH FLOW
   ============================================================ */
-if (type === 'future_cash_flow') {
-  const unpaidStatuses = ['un-paid', 'overdue', 'pertially_paid', 'defaulted'];
+  if (type === 'future_cash_flow') {
+    const unpaidStatuses = ['un-paid', 'overdue', 'pertially_paid', 'defaulted'];
 
-  const now = new Date();
-  now.setHours(0, 0, 0, 0); // normalize to start of today
+    const now = new Date();
+    now.setHours(0, 0, 0, 0); // normalize to start of today
 
-  const startForward = from ? new Date(from) : now;
-  const endForward = to ? new Date(to) : null;
+    const startForward = from ? new Date(from) : now;
+    const endForward = to ? new Date(to) : null;
 
-  // If from is before today, we split into:
-  //   - overduePeriod: [from, today)   → "pending till today"
-  //   - futurePeriod:  [today, to]     → "coming in future"
-  const hasOverduePeriod = startForward < now;
+    // If from is before today, we split into:
+    //   - overduePeriod: [from, today)   → "pending till today"
+    //   - futurePeriod:  [today, to]     → "coming in future"
+    const hasOverduePeriod = startForward < now;
 
-  const match = {
-    status: { $in: unpaidStatuses },
-    dueDate: endForward
-      ? { $gte: startForward, $lte: endForward }
-      : { $gte: startForward }
-  };
+    const match = {
+      status: { $in: unpaidStatuses },
+      dueDate: endForward
+        ? { $gte: startForward, $lte: endForward }
+        : { $gte: startForward }
+    };
 
-  if (inventoryId) match.inventory = inventoryId;
+    if (inventoryId) match.inventory = inventoryId;
 
-  const pipeline = [
-    { $match: match },
+    const pipeline = [
+      { $match: match },
 
-    {
-      $lookup: {
-        from: 'inventories',
-        localField: 'inventory',
-        foreignField: '_id',
-        as: 'inventoryDoc'
-      }
-    },
-    { $unwind: '$inventoryDoc' },
+      {
+        $lookup: {
+          from: 'inventories',
+          localField: 'inventory',
+          foreignField: '_id',
+          as: 'inventoryDoc'
+        }
+      },
+      { $unwind: '$inventoryDoc' },
 
-    ...(sectorId  ? [{ $match: { 'inventoryDoc.sector':  sectorId  } }] : []),
-    ...(projectId ? [{ $match: { 'inventoryDoc.project': projectId } }] : []),
+      ...(sectorId ? [{ $match: { 'inventoryDoc.sector': sectorId } }] : []),
+      ...(projectId ? [{ $match: { 'inventoryDoc.project': projectId } }] : []),
 
-    // Tag each installment as overdue (before today) or upcoming
-    {
-      $addFields: {
-        isPastDue: { $lt: ['$dueDate', now] }
-      }
-    },
+      // Tag each installment as overdue (before today) or upcoming
+      {
+        $addFields: {
+          isPastDue: { $lt: ['$dueDate', now] }
+        }
+      },
 
-    {
-      $facet: {
-        // ── Overall totals ──────────────────────────────────────────
-        overall: [
-          {
-            $group: {
-              _id: null,
-              totalComingAmount:        { $sum: '$amount' },
-              totalInstallments:        { $sum: 1 },
-              // pending = overdue slice only
-              totalPendingAmountTillToday: {
-                $sum: { $cond: ['$isPastDue', '$amount', 0] }
-              },
-              totalPendingInstallments: {
-                $sum: { $cond: ['$isPastDue', 1, 0] }
-              },
-              // future = upcoming slice only
-              totalFutureAmount: {
-                $sum: { $cond: ['$isPastDue', 0, '$amount'] }
-              },
-              totalFutureInstallments: {
-                $sum: { $cond: ['$isPastDue', 0, 1] }
+      {
+        $facet: {
+          // ── Overall totals ──────────────────────────────────────────
+          overall: [
+            {
+              $group: {
+                _id: null,
+                totalComingAmount: { $sum: '$amount' },
+                totalInstallments: { $sum: 1 },
+                // pending = overdue slice only
+                totalPendingAmountTillToday: {
+                  $sum: { $cond: ['$isPastDue', '$amount', 0] }
+                },
+                totalPendingInstallments: {
+                  $sum: { $cond: ['$isPastDue', 1, 0] }
+                },
+                // future = upcoming slice only
+                totalFutureAmount: {
+                  $sum: { $cond: ['$isPastDue', 0, '$amount'] }
+                },
+                totalFutureInstallments: {
+                  $sum: { $cond: ['$isPastDue', 0, 1] }
+                }
+              }
+            },
+            {
+              $project: {
+                _id: 0,
+                totalComingAmount: 1,
+                totalInstallments: 1,
+                totalPendingAmountTillToday: 1,
+                totalPendingInstallments: 1,
+                totalFutureAmount: 1,
+                totalFutureInstallments: 1
               }
             }
-          },
-          {
-            $project: {
-              _id: 0,
-              totalComingAmount: 1,
-              totalInstallments: 1,
-              totalPendingAmountTillToday: 1,
-              totalPendingInstallments: 1,
-              totalFutureAmount: 1,
-              totalFutureInstallments: 1
-            }
-          }
-        ],
+          ],
 
-        // ── By Inventory ────────────────────────────────────────────
-        byInventory: [
-          {
-            $group: {
-              _id: '$inventoryDoc._id',
-              inventoryFullNumber: { $first: '$inventoryDoc.fullNumber' },
-              inventoryStatus:     { $first: '$inventoryDoc.status' },
-              sector:              { $first: '$inventoryDoc.sector' },
-              project:             { $first: '$inventoryDoc.project' },
-              totalComingAmount:   { $sum: '$amount' },
-              totalInstallments:   { $sum: 1 },
-              nextDueDate:         { $min: '$dueDate' },
-              totalPendingAmountTillToday: {
-                $sum: { $cond: ['$isPastDue', '$amount', 0] }
-              },
-              totalFutureAmount: {
-                $sum: { $cond: ['$isPastDue', 0, '$amount'] }
+          // ── By Inventory ────────────────────────────────────────────
+          byInventory: [
+            {
+              $group: {
+                _id: '$inventoryDoc._id',
+                inventoryFullNumber: { $first: '$inventoryDoc.fullNumber' },
+                inventoryStatus: { $first: '$inventoryDoc.status' },
+                sector: { $first: '$inventoryDoc.sector' },
+                project: { $first: '$inventoryDoc.project' },
+                totalComingAmount: { $sum: '$amount' },
+                totalInstallments: { $sum: 1 },
+                nextDueDate: { $min: '$dueDate' },
+                totalPendingAmountTillToday: {
+                  $sum: { $cond: ['$isPastDue', '$amount', 0] }
+                },
+                totalFutureAmount: {
+                  $sum: { $cond: ['$isPastDue', 0, '$amount'] }
+                }
               }
-            }
-          },
-          { $sort: { totalComingAmount: -1 } }
-        ],
+            },
+            { $sort: { totalComingAmount: -1 } }
+          ],
 
-        // ── By Sector ───────────────────────────────────────────────
-        bySector: [
-          {
-            $group: {
-              _id: '$inventoryDoc.sector',
-              project:           { $first: '$inventoryDoc.project' },
-              totalComingAmount: { $sum: '$amount' },
-              totalInstallments: { $sum: 1 },
-              nextDueDate:       { $min: '$dueDate' },
-              totalPendingAmountTillToday: {
-                $sum: { $cond: ['$isPastDue', '$amount', 0] }
-              },
-              totalFutureAmount: {
-                $sum: { $cond: ['$isPastDue', 0, '$amount'] }
+          // ── By Sector ───────────────────────────────────────────────
+          bySector: [
+            {
+              $group: {
+                _id: '$inventoryDoc.sector',
+                project: { $first: '$inventoryDoc.project' },
+                totalComingAmount: { $sum: '$amount' },
+                totalInstallments: { $sum: 1 },
+                nextDueDate: { $min: '$dueDate' },
+                totalPendingAmountTillToday: {
+                  $sum: { $cond: ['$isPastDue', '$amount', 0] }
+                },
+                totalFutureAmount: {
+                  $sum: { $cond: ['$isPastDue', 0, '$amount'] }
+                }
               }
-            }
-          },
-          {
-            $lookup: {
-              from: 'sectors',
-              localField: '_id',
-              foreignField: '_id',
-              as: 'sectorDoc'
-            }
-          },
-          { $unwind: { path: '$sectorDoc', preserveNullAndEmptyArrays: true } },
-          {
-            $project: {
-              _id: 0,
-              sector: '$_id',
-              sectorTitle: '$sectorDoc.title',
-              project: 1,
-              totalComingAmount: 1,
-              totalInstallments: 1,
-              nextDueDate: 1,
-              totalPendingAmountTillToday: 1,
-              totalFutureAmount: 1
-            }
-          },
-          { $sort: { totalComingAmount: -1 } }
-        ]
+            },
+            {
+              $lookup: {
+                from: 'sectors',
+                localField: '_id',
+                foreignField: '_id',
+                as: 'sectorDoc'
+              }
+            },
+            { $unwind: { path: '$sectorDoc', preserveNullAndEmptyArrays: true } },
+            {
+              $project: {
+                _id: 0,
+                sector: '$_id',
+                sectorTitle: '$sectorDoc.title',
+                project: 1,
+                totalComingAmount: 1,
+                totalInstallments: 1,
+                nextDueDate: 1,
+                totalPendingAmountTillToday: 1,
+                totalFutureAmount: 1
+              }
+            },
+            { $sort: { totalComingAmount: -1 } }
+          ]
+        }
       }
-    }
-  ];
+    ];
 
-  const result = await Installment.aggregate(pipeline);
+    const result = await Installment.aggregate(pipeline);
 
-  const overall = result?.[0]?.overall?.[0] || {
-    title: 'Future Cash Flow',
-    totalComingAmount: 0,
-    totalInstallments: 0,
-    totalPendingAmountTillToday: 0,
-    totalPendingInstallments: 0,
-    totalFutureAmount: 0,
-    totalFutureInstallments: 0
-  };
+    const overall = result?.[0]?.overall?.[0] || {
+      title: 'Future Cash Flow',
+      totalComingAmount: 0,
+      totalInstallments: 0,
+      totalPendingAmountTillToday: 0,
+      totalPendingInstallments: 0,
+      totalFutureAmount: 0,
+      totalFutureInstallments: 0
+    };
 
-  return sendSuccessResponse(res, 200, logger, {
-    type,
-    range: { from: startForward, to: endForward },
-    filters: { project: projectId, sector: sectorId, inventory: inventoryId },
-    // flag so the client knows overdue data is present
-    hasOverduePeriod,
-    summary: overall,
-    byInventory: result?.[0]?.byInventory || [],
-    bySector:    result?.[0]?.bySector    || []
-  });
-}
+    return sendSuccessResponse(res, 200, logger, {
+      type,
+      range: { from: startForward, to: endForward },
+      filters: { project: projectId, sector: sectorId, inventory: inventoryId },
+      // flag so the client knows overdue data is present
+      hasOverduePeriod,
+      summary: overall,
+      byInventory: result?.[0]?.byInventory || [],
+      bySector: result?.[0]?.bySector || []
+    });
+  }
 
   return next(new AppError('Invalid report type.', 400));
 });

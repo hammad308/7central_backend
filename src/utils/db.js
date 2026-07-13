@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const logger = require('../logger')('DATABASE')
-// require("node:dns/promises").setServers(["1.1.1.1", "8.8.8.8"]);
+require("node:dns/promises").setServers(["1.1.1.1", "8.8.8.8"]);
 
 const DB = process.env.DATABASE_URI;
 

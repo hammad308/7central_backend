@@ -1,47 +1,25 @@
 const IMG_DIR = require("../constants/imgDir.constants");
 const menus = require("../constants/menus.constants");
 const {
-    createPayment,createInventoryPayment,verifyPayment,
+    createPayment, createInventoryPayment, verifyPayment,
     getAllPayments,
     getSinglePayment,
     mergePayment,
     mergePendingPayment
 } = require("../controllers/paymentController");
-const { protect, checkAccess, isSuperAdmin } = require("../middlewares/protect");
+const { protect, checkActionAccess, isSuperAdmin } = require("../middlewares/protect");
 const setUploadDirectory = require("../middlewares/setUploadDirectory");
 const router = require("express").Router();
 const { printRequest } = require("../logger")("PAYMENT_CONTROLLER");
 const upload = require("../middlewares/multer");
 
 
-router.route("/",)
-    .get(printRequest , protect ,checkAccess(menus.payment),
-       getAllPayments);
-router.route("/merge",)
-    .post(printRequest , protect ,checkAccess(menus.payment),
-       mergePayment);
-router.route("/merge-pending",)
-    .post(printRequest , protect ,checkAccess(menus.payment),
-       mergePendingPayment);
-router.route("/submit-pay-installment",)
-    .post(printRequest , protect ,checkAccess(menus.payment),
-    setUploadDirectory(IMG_DIR.payment),
-       createPayment);
-router.route("/submit-inventory-payment",)
-    .post(printRequest , protect ,checkAccess(menus.payment),
-    setUploadDirectory(IMG_DIR.payment),
-       createInventoryPayment);
-       
-router.route("/verify-payment-from-admin",)
-    .put(printRequest , protect ,isSuperAdmin,
-           verifyPayment);
-router.route("/:id",)
-    .get(printRequest ,
-           getSinglePayment);
-
-       
-
-
-
+router.get("/", printRequest, protect, checkActionAccess(menus.payment, "list"), getAllPayments);
+router.post("/merge", printRequest, protect, checkActionAccess(menus.payment, "create"), mergePayment);
+router.post("/merge-pending", printRequest, protect, checkActionAccess(menus.payment, "create"), mergePendingPayment);
+router.post("/submit-pay-installment", printRequest, protect, checkActionAccess(menus.payment, "create"), setUploadDirectory(IMG_DIR.payment), upload.single("receipt"), createPayment);
+router.post("/submit-inventory-payment", printRequest, protect, checkActionAccess(menus.payment, "create"), setUploadDirectory(IMG_DIR.payment), upload.single("receipt"), createInventoryPayment);
+router.put("/verify-payment-from-admin", printRequest, protect, isSuperAdmin, verifyPayment);
+router.get("/:id", printRequest, protect, checkActionAccess(menus.payment, "read"), getSinglePayment);
 
 module.exports = router;

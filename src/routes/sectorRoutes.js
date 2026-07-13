@@ -8,27 +8,27 @@ const {
     deleteSector
 } = require("../controllers/sectorController");
 const { printRequest } = require("../logger")("SECTOR_CONTROLLER");
-const { protect , checkAccess } = require('../middlewares/protect');
+const { protect , checkActionAccess } = require('../middlewares/protect');
 
 router.route('/')
     .post(
         printRequest ,
         protect , 
-        checkAccess(menus.sectors) ,
+        checkActionAccess(menus.sectors, "create") ,
         create
     )
-    .get(printRequest , protect , checkAccess(menus.sectors) , getAll);
+    .get(printRequest , protect , checkActionAccess(menus.sectors,"list") , getAll);
 
 
 router.route('/:id')
-    .get(printRequest , protect , checkAccess(menus.sectors) , getSingle)
+    .get(printRequest , protect , checkActionAccess(menus.sectors,"read") , getSingle)
     .put(
         printRequest , 
         protect , 
-        checkAccess(menus.sectors) , 
+        checkActionAccess(menus.sectors,"update") , 
         update
     )
-    .delete(printRequest , protect , checkAccess(menus.sectors) , deleteSector);
+    .delete(printRequest , protect , checkActionAccess(menus.sectors,"delete") , deleteSector);
 
 
 module.exports = router;

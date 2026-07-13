@@ -14,20 +14,17 @@ exports.createOne = (Model , docValidation = null , logger , options = {} ) => c
         const newImage = req.file.location;
         req.body[imageField] = newImage;
     }
-
     // Handle multiple images upload
     if (req.files && !isSingleImage && req.files.length > 0) {
         const newImages = req.files.map(file => file.location);
         req.body[imageField] = [...doc[imageField], ...newImages]; // Append new images to existing ones
     }
-
     if(docValidation){
         const { error } = docValidation.validate(req.body);
         if(error){
             return next(new AppError(error.details[0].message , 400))
         }
     }
-
     const newDoc = await Model.create(req.body);
     return sendSuccessResponse(res , 201 , logger , {
         message : 'Created successfully.' ,
@@ -43,11 +40,9 @@ exports.getMy = (Model, populateItems = {}, logger, query = {}) => {
             .limitFields()
             .sort()
             .paginate();
-
         const docs = await features.query.populate(populateItems);
         const docsCount = await Model.countDocuments({...query , ...features.queryObj});
         const pages = Math.ceil(docsCount / features.pageSize);
-
         sendSuccessResponse(res, 200, logger, {
             docs,
             page: features.page,
@@ -64,11 +59,9 @@ exports.getAll = (Model, populateItems = {}, logger, query = {}) => {
             .limitFields()
             .sort()
             .paginate();
-
         const docs = await features.query.populate(populateItems);
         const docsCount = await Model.countDocuments({...query , ...features.queryObj});
         const pages = Math.ceil(docsCount / features.pageSize);
-
         sendSuccessResponse(res, 200, logger, {
             docs,
             page: features.page,
@@ -83,10 +76,8 @@ exports.getTotal = (Model, populateItems = '' , logger) => catchAsync(async(req 
     .filter()
     .limitFields()
     .sort();  
-
     const docs = await features.query.populate(populateItems)
     const docCount = await Model.countDocuments(features.queryObj);
-    
     sendSuccessResponse(res , 200 , logger , {
         docs , docCount 
     });
@@ -94,14 +85,12 @@ exports.getTotal = (Model, populateItems = '' , logger) => catchAsync(async(req 
 
 exports.getOne = (Model, populateItems = '', logger, paramName = 'id', field = '_id') => catchAsync(async (req, res, next) => {
     const value = req.params[paramName];
-    
     let query;
     if (field === '_id') {
         query = Model.findById(value);
     } else {
         query = Model.findOne({ [field] : value });
     }
-
     const doc = await query.populate(populateItems);
     if (!doc) return next(new AppError(`No record found with that ${field}.`, 404));
     sendSuccessResponse(res, 200, logger, { doc });
@@ -117,7 +106,7 @@ exports.updateOne = (Model, logger, options = {}) => catchAsync(async (req, res,
     }
 
     if(doc?.isSuperAdmin){
-        return next(new AppError('You can not update super admin user.', 400));
+        return next(new AppError('You cannot update super admin user.', 400));
     }
     // Handle single image upload
     // if (req.file && isSingleImage) {
@@ -163,19 +152,20 @@ exports.updateOne = (Model, logger, options = {}) => catchAsync(async (req, res,
 
 
 exports.deleteOne = (Model , logger ) => catchAsync(async( req , res , next) => {
+    const user = await Model.findById(req.params.id);
+    if(!user){
+        return next(new AppError('Document not found.' , 404))
+    }
+    if(user?.isSuperAdmin){
+        return next(new AppError('You can not update super admin user.', 400));
+    }
     const doc = await Model.findByIdAndUpdate(req.params.id , { status : 'deleted'} , {
         new : true 
     });
-    if(doc?.isSuperAdmin){
-        return next(new AppError('You can not update super admin user.', 400));
-    }
-    if(!doc){
-        return next(new AppError('Document not found.' , 404))
-    }
     sendSuccessResponse(res , 200 , logger , {
         message : 'Deleted successfully.' ,
         doc
-    })
+    });
 });
 
 exports.removeFromDb = (Model , logger ) => catchAsync(async( req , res , next) => {

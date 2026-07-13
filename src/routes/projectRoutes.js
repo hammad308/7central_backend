@@ -8,27 +8,25 @@ const {
     deleteProject
 } = require("../controllers/projectController");
 const { printRequest } = require("../logger")("PROJECT_CONTROLLER");
-const { protect , checkAccess } = require('../middlewares/protect');
+const { protect, checkActionAccess } = require('../middlewares/protect');
 
 router.route('/')
     .post(
-        printRequest ,
-        protect , 
-        checkAccess(menus.projects) ,
+        printRequest,
+        protect,
+        checkActionAccess(menus.projects, "create"),
         create
     )
-    .get(printRequest , protect , checkAccess(menus.projects) , getAll);
-
+    .get(printRequest, protect, checkActionAccess(menus.projects, "list"), getAll);
 
 router.route('/:id')
-    .get(printRequest , protect , checkAccess(menus.projects) , getSingle)
+    .get(printRequest, protect, checkActionAccess(menus.projects, "read"), getSingle)
     .put(
-        printRequest , 
-        protect , 
-        checkAccess(menus.projects) , 
+        printRequest,
+        protect,
+        checkActionAccess(menus.projects, "update"),
         update
     )
-    .delete(printRequest , protect , checkAccess(menus.projects) , deleteProject);
-
+    .delete(printRequest, protect, checkActionAccess(menus.projects, "delete"), deleteProject);
 
 module.exports = router;

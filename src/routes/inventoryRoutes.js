@@ -11,35 +11,27 @@ const {
     createCSVUploadOfInventory
 } = require("../controllers/inventoryController");
 const upload = require("../middlewares/multer");
-const { printRequest } = require("../logger")("SONG_CONTROLLER");
-const { protect , checkAccess } = require('../middlewares/protect');
+const { printRequest } = require("../logger")("INVENTORY_CONTROLLER");
+const { protect, checkActionAccess } = require('../middlewares/protect');
 const setUploadDirectory = require("../middlewares/setUploadDirectory");
-
-
-
 router.route('/')
     .post(
-        printRequest ,
-        protect , 
-        checkAccess(menus.inventories) ,
+        printRequest,
+        protect,
+        checkActionAccess(menus.inventories, "create"),
         createInventory
     )
-    .get(printRequest , protect , getAllInventories )
-
-router.get('/payment-stats' , printRequest , protect , inventoryPaymentStats)
-// router.get('/by-category/:category' , printRequest , protect , getSongsByCategory)
-// router.get('/cast-details-with-songs/:castId' , printRequest , protect , getCastDetailsWithSongs)
-// router.get('/new-release-and-most-listened' , printRequest , getNewAndMostListenedSongs)
-router.post('/upload-by-csv' , printRequest , protect , createCSVUploadOfInventory)
-
+    .get(printRequest, protect, checkActionAccess(menus.inventories, "list"), getAllInventories);
+router.get('/payment-stats', printRequest, protect, inventoryPaymentStats);
+router.post('/upload-by-csv', printRequest, protect, createCSVUploadOfInventory);
 router.route('/:id')
-    .get(printRequest , getSingle)
+    .get(printRequest, protect,checkActionAccess(menus.inventories, "read") , getSingle)
     .put(
-        printRequest ,
-        protect , 
-        checkAccess(menus.inventories) ,
+        printRequest,
+        protect,
+        checkActionAccess(menus.inventories,"update"),
         update
     )
-    .delete(printRequest , protect , checkAccess(menus.songs) , deleteInventory)
+    .delete(printRequest, protect, checkActionAccess(menus.inventories,"delete"), deleteInventory);
 
 module.exports = router;
