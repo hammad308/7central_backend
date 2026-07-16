@@ -64,6 +64,17 @@ app.use('/api/report' , require('./routes/reportRoutes.js'));
 app.use("/api/notification-templates", require("./routes/notificationTemplateRoutes"));
 app.use("/api/broadcast-campaigns", require("./routes/broadcastCampaignRoutes"));
 app.use("/api/notification-logs", require("./routes/notificationLogRoutes"));
+app.use("/api/company", require("./routes/companyRoutes.js"));
+app.use("/api/department", require("./routes/departmentRoutes.js"));
+app.use("/api/employee", require("./routes/employeeRoutes.js"));
+app.use("/api/employeeincrement", require("./routes/employeeIncrementRoutes.js"));
+app.use("/api/employeesleave", require("./routes/employeeLeaveRoutes.js"));
+app.use("/api/employeesbonus", require("./routes/employeeBonusRoutes.js"));
+app.use("/api/employeescomplaint", require("./routes/employeeComplaintRoutes.js"));
+app.use("/api/workinghour", require("./routes/workingHoursRoutes.js"));
+app.use("/api/employeesattendance", require("./routes/employeeAttendanceRoutes.js"));
+app.use("/api/leaverule", require("./routes/leaveRulesRoutes.js"));
+
 
 app.use("/", loggingMiddlewares.respondNoResourceFound);
 

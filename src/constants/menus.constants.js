@@ -11,7 +11,17 @@ const menus = {
     notification: "Notification",
     admin:"Admin",
     report:"Report",
-    sale:"Sale"
+    sale:"Sale",
+    companies:"Company",
+    departments:"Department",
+    employeeattendances:"EmployeeAttendence",
+    employeebonus:"EmployeeBonus",
+    employeecomplaints:"EmployeeComplaint",
+    employeeincrements:"EmployeeIncrement",
+    employeeleaves:"EmployeeLeave",
+    employees:"Employee",
+    leaverules:"LeaveRule",
+    workinghours:"WorkingHour"
 }
 
 module.exports = menus;

@@ -42,15 +42,15 @@ const DOCUMENT_TYPES = [
   "ownership_letter",
   "other"
 ];
- 
+
 const INSTALLMENT_TYPE = [
-  'full_payment','down_payment', 'allocation', 'confirmation', 'possession',
-  'regular', 'balloon','quarterly','monthly','monthly_balloon'
+  'full_payment', 'down_payment', 'allocation', 'confirmation', 'possession',
+  'regular', 'balloon', 'quarterly', 'monthly', 'monthly_balloon'
 ];
-const INSTALLMENT_STATUS = ['un-paid', 'paid', 'overdue', 'defaulted', 'waived','pertially_paid'];
+const INSTALLMENT_STATUS = ['un-paid', 'paid', 'overdue', 'defaulted', 'waived', 'pertially_paid'];
 
 const INVENTORY_TYPES = [
-  "residential", "commercial","appartment"
+  "residential", "commercial", "appartment"
 ];
 const OWNERSHIP_TYPES = [
   "self",
@@ -61,7 +61,7 @@ const PAYMENT_TYPES = [
   "installment",
 ];
 const SALE_STATUS = [
- 'draft', 'active', 'completed', 'cancelled', 'defaulted','transferred'
+  'draft', 'active', 'completed', 'cancelled', 'defaulted', 'transferred'
 ];
 
 
@@ -80,24 +80,23 @@ const NUMBERS_DIR = "numbers";
 
 
 module.exports = {
-    APP_NAME, APP_SHORT_NAME,
-    PREFIX_PROJECT_AUTOINCREMENTID,
-    PREFIX_SECTOR_AUTOINCREMENTID, PREFIX_RECEIPT_AUTOINCREMENTID,
-    PREFIX_INVENTORY_AUTOINCREMENTID, PREFIX_CUSTOMER_AUTOINCREMENTID,
-    PREFIX_INSTALLMENT_AUTOINCREMENTID,
-    PREFIX_DOCUMENT_AUTOINCREMENTID,
-    CUSTOMER_PARTNER_TYPES,
-    CUSTOMER_RELATION_TYPES,
-    DOCUMENT_TYPES,
-    DOCUMENT_ASSIGN_TYPES,
-    INVENTORY_TYPES,
-    PREFIX_JOINT_AUTOINCREMENTID,
-    PREFIX_KIN_AUTOINCREMENTID,
-    SALE_STATUS,
-    INSTALLMENT_TYPE,
-    INSTALLMENT_STATUS ,
-    OWNERSHIP_TYPES,
-    PAYMENT_TYPES,
-    NUMBERS_DIR
-
+  APP_NAME, APP_SHORT_NAME,
+  PREFIX_PROJECT_AUTOINCREMENTID,
+  PREFIX_SECTOR_AUTOINCREMENTID, PREFIX_RECEIPT_AUTOINCREMENTID,
+  PREFIX_INVENTORY_AUTOINCREMENTID, PREFIX_CUSTOMER_AUTOINCREMENTID,
+  PREFIX_INSTALLMENT_AUTOINCREMENTID,
+  PREFIX_DOCUMENT_AUTOINCREMENTID,
+  CUSTOMER_PARTNER_TYPES,
+  CUSTOMER_RELATION_TYPES,
+  DOCUMENT_TYPES,
+  DOCUMENT_ASSIGN_TYPES,
+  INVENTORY_TYPES,
+  PREFIX_JOINT_AUTOINCREMENTID,
+  PREFIX_KIN_AUTOINCREMENTID,
+  SALE_STATUS,
+  INSTALLMENT_TYPE,
+  INSTALLMENT_STATUS,
+  OWNERSHIP_TYPES,
+  PAYMENT_TYPES,
+  NUMBERS_DIR
 };

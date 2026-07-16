@@ -1,13 +1,4 @@
-const logger = require('../logger')('CUSTOMER_CONTROLLER');
-const handlerFactory = require('./factories/handlerFactory');
-const { sendSuccessResponse, getLongAutoIncrementId } = require('../utils/helpers');
-const { uploadBase64Image } = require('../utils/uploadFiles');
-const catchAsync = require('../utils/catchAsync');
-const AppError = require('../utils/appError');
-const { customerValidationSchema, partnerValidationSchema } = require('../validations/customerValidations');
 const Customer = require('../models/customerModel');
-const { getNextInSequence } = require('../utils/db');
-const { PREFIX_CUSTOMER_AUTOINCREMENTID, PREFIX_JOINT_AUTOINCREMENTID, PREFIX_KIN_AUTOINCREMENTID } = require('../constants/app.constants');
 const Partner = require('../models/partnerModel');
 const NotificationSetting = require('../models/notificationSettingModel');
 const Document = require('../models/documentModel');
@@ -16,6 +7,16 @@ const mongoose = require("mongoose");
 const Installment = require('../models/installmentModel');
 const Payment = require('../models/paymentModel');
 const ProvisionalReceipt = require('../models/provisionalReceiptModel');
+const logger = require('../logger')('CUSTOMER_CONTROLLER');
+const handlerFactory = require('./factories/handlerFactory');
+const { sendSuccessResponse, getLongAutoIncrementId } = require('../utils/helpers');
+const { uploadBase64Image } = require('../utils/uploadFiles');
+const catchAsync = require('../utils/catchAsync');
+const AppError = require('../utils/appError');
+const { customerValidationSchema, partnerValidationSchema } = require('../validations/customerValidations');
+const { getNextInSequence } = require('../utils/db');
+const { PREFIX_CUSTOMER_AUTOINCREMENTID, PREFIX_JOINT_AUTOINCREMENTID, PREFIX_KIN_AUTOINCREMENTID } = require('../constants/app.constants');
+
 
 const popObj = [
   {
@@ -133,9 +134,9 @@ exports.createNextOfKin = catchAsync(async (req, res, next) => {
   await partner.save();
 
   // Send response
-  sendSuccessResponse(res, 200, logger, {
+  sendSuccessResponse(res, 201, logger, {
     message: 'Next of Kin created successfully.',
-    doc: partner,
+    doc: partner
   });
 });
 
