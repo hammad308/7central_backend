@@ -99,8 +99,8 @@ const installmentPlanSchema = Joi.object({
     'string.base': 'Inventory ID must be a string.',
   }),
  bookingDate: isoDate.optional().messages({
-    'date.base': 'Balloon startDate must be a valid date.',
-    'date.format': 'Balloon startDate must be in ISO format.'
+    'date.base': 'Booking startDate must be a valid date.',
+    'date.format': 'Booking startDate must be in ISO format.'
   }),
   category: Joi.string().trim().min(1).required().messages({
     'any.required': 'category is required like full_payment or 1 year installments, 2 year installments etc.',

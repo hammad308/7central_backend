@@ -14,7 +14,7 @@ const { PREFIX_INVENTORY_AUTOINCREMENTID, NUMBERS_DIR } = require("../constants/
 const Sale = require("../models/saleModel");
 const OwnerShipHistory = require("../models/ownershipHistoryModel");
 const Project = require("../models/projectModel");
-const Sector = require("../models/sectorModel");
+const BlockOrFloor = require("../models/blockOrFloorModel");
 const { uploadDataFile } = require("../utils/uploadFiles");
 const path = require("path");
 const fs = require("fs");
@@ -23,7 +23,7 @@ const { DateTime } = require("luxon");
 const Installment = require("../models/installmentModel");
 const popItems = [
   { path: 'project', select: 'title' },
-  { path: 'sector', select: 'title' },
+  { path: 'blockOrFloor', select: 'title' },
   {
     path: 'currentSale', populate:
       [{ path: 'buyers', select: " name fatherName cnic phoneNumber email " },
@@ -68,18 +68,18 @@ exports.createInventory = catchAsync(async (req, res, next) => {
 // ALL POPULATE OBJECTS
 const popObj = [
   { path: 'currentSale', populate: { path: 'buyers', select: " name fatherName cnic phoneNumber email " } },
-  { path: 'project', },
-  { path: 'sector', },
+  { path: 'project'},
+  { path: 'blockOrFloor' },
 
 ];
 
 exports.getAllInventories = catchAsync(async (req, res, next) => {
-  const { project, sector, type, status } = req.query;
+  const { project, blockOrFloor, type, status } = req.query;
   const query = {};
   if (project) {
     query.project = project;
-  } else if (sector) {
-    query.sector = sector;
+  } else if (blockOrFloor) {
+    query.blockOrFloor = blockOrFloor;
   }
   else if (type) {
     query.type = type;
@@ -107,7 +107,7 @@ exports.createCSVUploadOfInventory = catchAsync(async (req, res, next) => {
 
   let existingTermination = null;
 
-  const existingSector = await Sector.findById(validData.sector);
+  const existingBlockOrFloor = await BlockOrFloor.findById(validData.blockOrFloor);
 
   // Read CSV file
   const base64String = validData.csvDataURI.split(",")[1];
@@ -120,7 +120,6 @@ exports.createCSVUploadOfInventory = catchAsync(async (req, res, next) => {
       `.csv`,
     );
   } catch (err) {
-    console.error(err);
     return sendErrorResponse(res, 500, logger, {
       message: "File upload failed",
       doc: null,
@@ -164,7 +163,7 @@ exports.createCSVUploadOfInventory = catchAsync(async (req, res, next) => {
           let data = {
             autoIncrementId: newIDNumber,
             longAutoIncrementId: longAutoIncrementId,
-            project: existingProject._id, sector: existingSector._id,
+            project: existingProject._id, blockOrFloor: existingBlockOrFloor._id,
             createdBy: req.user._id, ...el
           };
           insertMany.push(data);

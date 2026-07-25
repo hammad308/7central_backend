@@ -2,7 +2,8 @@ const IMG_DIR = require("../constants/imgDir.constants");
 const menus = require("../constants/menus.constants");
 const {
     createCustomerDocument, createInventoryDocument, updateDocument, deleteOne,
-    getAllDocuments
+    getAllDocuments,
+    createNextOfKinDocument
 } = require("../controllers/documentController");
 const { protect, checkActionAccess } = require("../middlewares/protect");
 const setUploadDirectory = require("../middlewares/setUploadDirectory");
@@ -14,12 +15,16 @@ router.get("/", printRequest, protect, checkActionAccess(menus.document, "list")
 router.route("/create-customer-document")
     .post(printRequest, protect, checkActionAccess(menus.document, "create"),
         setUploadDirectory(IMG_DIR.document),
-        // upload.array('files', 5),
         createCustomerDocument);
 
 router.post("/create-inventory-document", printRequest, protect, checkActionAccess(menus.document, "create"),
     setUploadDirectory(IMG_DIR.document),
-    upload.array('files', 5), createInventoryDocument)
+    createInventoryDocument)
+
+router.post("/create-nextOfKin-document", printRequest, protect, checkActionAccess(menus.document, "create"),
+    setUploadDirectory(IMG_DIR.document),
+    createNextOfKinDocument
+)
 
 //router.put("/:id",)
 

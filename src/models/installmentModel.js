@@ -6,20 +6,24 @@ const installmentSchema = new mongoose.Schema({
   sale: { type: mongoose.Schema.Types.ObjectId, ref: 'Sale', required: true, index: true },
   inventory: { type: mongoose.Schema.Types.ObjectId, ref: 'Inventory', required: true, index: true },
 
-  seq:  { type: Number, required: true }, // 1..N visible to users
+  seq: { type: Number, required: true }, // 1..N visible to users
   type: { type: String, enum: INSTALLMENT_TYPE, required: true },
 
   dueDate: { type: Date, required: true, index: true },
-  amount:  { type: Number, required: true },
+  amount: { type: Number, required: true },
 
-  status:  { type: String, enum: INSTALLMENT_STATUS, default: 'un-paid', index: true },
+  status: { type: String, enum: INSTALLMENT_STATUS, default: 'pending', index: true },
 
-  paidAt:   { type: Date, default:null, index: true },
+  paidAt: { type: Date, default: null, index: true },
   paidAmount: { type: Number, default: 0 },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
     default: null
+  },
+  isApproved:{
+    type:Boolean,
+    default:false
   },
   paidBy: {
     type: mongoose.Schema.Types.ObjectId,

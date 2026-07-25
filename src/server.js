@@ -51,7 +51,7 @@ app.use(mongoSanitize());
 // ROUTES
 app.use('/api/user' , require('./routes/userRoutes'));
 app.use('/api/project' , require('./routes/projectRoutes'));
-app.use('/api/sector' , require('./routes/sectorRoutes'));
+app.use('/api/block-floor' , require('./routes/blockOrFloorRoutes'));
 app.use('/api/customer' , require('./routes/customerRoutes'));
 app.use('/api/inventory' , require('./routes/inventoryRoutes'));
 app.use('/api/document' , require('./routes/documentRoutes'));
@@ -68,12 +68,14 @@ app.use("/api/company", require("./routes/companyRoutes.js"));
 app.use("/api/department", require("./routes/departmentRoutes.js"));
 app.use("/api/employee", require("./routes/employeeRoutes.js"));
 app.use("/api/employeeincrement", require("./routes/employeeIncrementRoutes.js"));
-app.use("/api/employeesleave", require("./routes/employeeLeaveRoutes.js"));
-app.use("/api/employeesbonus", require("./routes/employeeBonusRoutes.js"));
-app.use("/api/employeescomplaint", require("./routes/employeeComplaintRoutes.js"));
-app.use("/api/workinghour", require("./routes/workingHoursRoutes.js"));
-app.use("/api/employeesattendance", require("./routes/employeeAttendanceRoutes.js"));
-app.use("/api/leaverule", require("./routes/leaveRulesRoutes.js"));
+app.use("/api/employeeleave", require("./routes/employeeLeaveRoutes.js"));
+app.use("/api/employeebonus", require("./routes/employeeBonusRoutes.js"));
+app.use("/api/employeecomplaint", require("./routes/employeeComplaintRoutes.js"));
+app.use("/api/workinghour", require("./routes/workingHourRoutes.js"));
+app.use("/api/employeeattendance", require("./routes/employeeAttendanceRoutes.js"));
+app.use("/api/leaverule", require("./routes/leaveRuleRoutes.js"));
+app.use("/api/role",require("./routes/roleRoutes"));
+app.use("/api/publicholiday", require("./routes/publicHolidayRoutes"));
 
 
 app.use("/", loggingMiddlewares.respondNoResourceFound);

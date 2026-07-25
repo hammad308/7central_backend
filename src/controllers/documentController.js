@@ -3,9 +3,10 @@ const { sendSuccessResponse, getLongAutoIncrementId } = require('../utils/helper
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
 const Customer = require('../models/customerModel');
+const Partner = require('../models/partnerModel');
 const { getNextInSequence } = require('../utils/db');
 const { PREFIX_DOCUMENT_AUTOINCREMENTID } = require('../constants/app.constants');
-const { customerDocumentValidationSchema, inventoryDocumentValidationSchema, updateDocumentValidationSchema } = require('../validations/documentValidation');
+const { customerDocumentValidationSchema, inventoryDocumentValidationSchema, updateDocumentValidationSchema, createNextOfKinValidationSchema } = require('../validations/documentValidation');
 const Inventory = require('../models/inventoryModel');
 const Document = require('../models/documentModel');
 const handlerFactory = require('./factories/handlerFactory');
@@ -44,8 +45,6 @@ exports.createCustomerDocument = catchAsync(async (req, res, next) => {
           tags: req.body.tags?.[i] || []     // default empty array
         });
       }
-
-
     }
 
     req.body.attachments = attachments;
@@ -147,6 +146,55 @@ exports.updateCustomerDocument = catchAsync(async (req, res, next) => {
   });
 });
 
+exports.createNextOfKinDocument = catchAsync(async (req, res, next) => {
+  const { error } = createNextOfKinValidationSchema.validate(req.body);
+  if (error) {
+    return next(new AppError(error.details[0].message, 400));
+  }
+  req.body.createdBy = req.user._id;
+  req.body.assingType = "nextOfKin";
+  const partner = await Partner.findById(req.body.partner);
+  if (!partner) {
+    return next(new AppError("Partner not Found", 404));
+  }
+  if (req.body.attachments && Array.isArray(req.body.attachments) && req.body.attachments.length > 0) {
+    const uploadDir = `uploads/${req.uploadDirectory}`;
+    let attachments = [];
+    for (let i = 0; i < req.body.attachments.length; i++) {
+      if (!req.body.attachments[i]) continue;
+      if (req.body.attachments[i].fileUrl) {
+        const image = req.body.attachments[i].fileUrl;
+        if (!image) continue;
+        const base64String = image.split(",")[1];
+        const result = await uploadBase64Image(base64String, uploadDir);
+        const relativeAddress = `${req.uploadDirectory}/${result.fileName}`
+        attachments.push(
+          {
+            fileUrl: relativeAddress,
+            tags: req.body.tags?.[i] || []
+          }
+        )
+      }
+    }
+    req.body.attachments = attachments;
+    delete req.body.images;
+    delete req.body.image;
+  }
+  const document = await Document.create(req.body);
+  const newIDNumber = await getNextInSequence('documents');
+  const longAutoIncrementId = getLongAutoIncrementId(
+    PREFIX_DOCUMENT_AUTOINCREMENTID,
+    newIDNumber
+  );
+  document.autoIncrementId = newIDNumber;
+  document.longAutoIncrementId = longAutoIncrementId;
+  await document.save();
+
+  sendSuccessResponse(res, 200, logger, {
+    message: "Next Of Kin Documents Uploaded Successfully",
+    doc: document
+  })
+})
 exports.createInventoryDocument = catchAsync(async (req, res, next) => {
   const { error } = inventoryDocumentValidationSchema.validate(req.body);
   if (error) {
@@ -265,7 +313,7 @@ exports.updateInventoryDocument = catchAsync(async (req, res, next) => {
 
 const popItems = [
   { path: 'customer', select: 'name email fatherName cnic phoneNumber' },
-  { path: 'inventory', },
+  { path: 'inventory' },
   {
     path: 'createdBy',
     select: 'username image email -_id'
@@ -277,10 +325,10 @@ exports.getAllDocuments = catchAsync(async (req, res, next) => {
   const query = {};
   if (inventory) {
     query.inventory = inventory;
-  } else if (customer) {
+  } if (customer) {
     query.customer = customer;
   }
-  handlerFactory.getAll(Document, popItems, logger, query)(req, res, next)
+  handlerFactory.getAll(Document, popItems, logger, query)(req, res, next);
 });
 
 exports.updateDocument = catchAsync(async (req, res, next) => {

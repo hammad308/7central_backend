@@ -1,32 +1,24 @@
 // utils/installmentPlanBuilder.js
 const dayjs = require("dayjs");
 
-function addPeriod(date, duration) {
-  const d = dayjs(date);
-
-  switch (duration || "") {
-    case "Monthly":
-      return d.add(1, "month").toDate();
-    case "Quarterly":
-      return d.add(3, "month").toDate();
-    case "Half Yearly":
-      return d.add(6, "month").toDate();
-    case "Monthly + Half Yearly":
-      return d.add(6, "month").toDate();
-    case "Yearly":
-      return d.add(1, "year").toDate();
-    default:
-      return d.add(1, "month").toDate();
-  }
+function addPeriod(d, durationStr) {
+  const map = {
+    'Monthly': { months: 1 },
+    'Quarterly': { months: 3 },
+    'Half Yearly': { months: 6 },
+    'Monthly + Half Yearly': { months: 6 },
+    'Yearly': { years: 1 }
+  };
+  const inc = map[durationStr];
+  if (!inc) throw new Error(`Unknown duration ${durationStr}`);
+  return dayjs(d).add(inc.months || 0, 'month').add(inc.years || 0, 'year').toDate();
 }
 
-function buildInstallmentRows({ value, sale, planId, userId }) {
+function buildInstallmentRows({ plan, saleId, userId }) {
   const rows = [];
   const monthMap = new Map();
 
-  const today = value.bookingDate
-    ? dayjs(value.bookingDate).startOf("day")
-    : dayjs().startOf("day");
+  const today = dayjs().startOf("day");
 
   const monthKey = (d) => dayjs(d).format("YYYY-MM");
 
@@ -42,9 +34,9 @@ function buildInstallmentRows({ value, sale, planId, userId }) {
       if (!monthMap.has(key)) {
         monthMap.set(key, rows.length);
         rows.push({
-          plan: planId,
-          sale: sale._id,
-          inventory: sale.inventory,
+          plan: plan._id,
+          sale: saleId,
+          inventory: plan.inventory,
           type: kind,
           dueDate: d.toDate(),
           amount,
@@ -63,59 +55,59 @@ function buildInstallmentRows({ value, sale, planId, userId }) {
   };
 
   // 1) Milestones
-  if (value.fullPayment) {
-    push("full_payment", today.toDate(), value.fullPayment);
+  if (plan.fullPayment) {
+    push("full_payment", today.toDate(), plan.fullPayment);
   }
 
-  if (value.downPayment) {
-    push("down_payment", today.toDate(), value.downPayment);
+  if (plan.downPayment) {
+    push("down_payment", today.toDate(), plan.downPayment);
   }
 
-  if (value.allocation) {
-    push("allocation", today.add(30, "day").toDate(), value.allocation);
+  if (plan.allocation) {
+    push("allocation", today.add(30, "day").toDate(), plan.allocation);
   }
 
-  if (value.confirmation) {
-    push("confirmation", today.add(60, "day").toDate(), value.confirmation);
+  if (plan.confirmation) {
+    push("confirmation", today.add(60, "day").toDate(), plan.confirmation);
   }
 
   // 2) Balloon stream
-  if (value.balloon?.count) {
-    let d = value.balloon.startDate || today.add(6, "month").toDate();
-    for (let i = 0; i < value.balloon.count; i++) {
-      push("balloon", d, value.balloon.amount);
-      d = addPeriod(d, value.balloon.duration);
+  if (plan.balloon?.count) {
+    let d = plan.balloon.startDate || today.add(6, "month").toDate();
+    for (let i = 0; i < plan.balloon.count; i++) {
+      push("balloon", d, plan.balloon.amount);
+      d = addPeriod(d, plan.balloon.duration);
     }
   }
 
-  if (value.monthlyBalloon?.count) {
-    let d = value.monthlyBalloon.startDate || today.add(6, "month").toDate();
-    for (let i = 0; i < value.monthlyBalloon.count; i++) {
-      push("monthly_balloon", d, value.monthlyBalloon.amount);
-      d = addPeriod(d, value.monthlyBalloon.duration);
+  if (plan.monthlyBalloon?.count) {
+    let d = plan.monthlyBalloon.startDate || today.add(6, "month").toDate();
+    for (let i = 0; i < plan.monthlyBalloon.count; i++) {
+      push("monthly_balloon", d, plan.monthlyBalloon.amount);
+      d = addPeriod(d, plan.monthlyBalloon.duration);
     }
   }
 
   // 3) Quarterly
-  if (value.quarterly?.count) {
-    let d = value.quarterly.startDate || today.add(3, "month").toDate();
-    for (let i = 0; i < value.quarterly.count; i++) {
-      push("quarterly", d, value.quarterly.amount);
-      d = addPeriod(d, value.quarterly.duration);
+  if (plan.quarterly?.count) {
+    let d = plan.quarterly.startDate || today.add(3, "month").toDate();
+    for (let i = 0; i < plan.quarterly.count; i++) {
+      push("quarterly", d, plan.quarterly.amount);
+      d = addPeriod(d, plan.quarterly.duration);
     }
   }
 
   // 4) Monthly
-  if (value.monthly?.count) {
-    let d = value.monthly.startDate || today.add(1, "month").toDate();
-    for (let i = 0; i < value.monthly.count; i++) {
-      push("monthly", d, value.monthly.amount);
-      d = addPeriod(d, value.monthly.duration);
+  if (plan.monthly?.count) {
+    let d = plan.monthly.startDate || today.add(1, "month").toDate();
+    for (let i = 0; i < plan.monthly.count; i++) {
+      push("monthly", d, plan.monthly.amount);
+      d = addPeriod(d, plan.monthly.duration);
     }
   }
 
   // 5) Possession
-  if (value.possession && rows.length > 0) {
+  if (plan.possession && rows.length > 0) {
     const lastDate = rows.reduce(
       (max, r) => (r.dueDate > max ? r.dueDate : max),
       rows[0].dueDate
@@ -127,12 +119,12 @@ function buildInstallmentRows({ value, sale, planId, userId }) {
       .toDate();
 
     rows.push({
-      plan: planId,
-      sale: sale._id,
-      inventory: sale.inventory,
+      plan: plan._id,
+      sale: saleId,
+      inventory: plan.inventory,
       type: "possession",
       dueDate: possessionDate,
-      amount: value.possession,
+      amount: plan.possession,
       status: "un-paid",
       paidAmount: 0,
       paidAt: null,

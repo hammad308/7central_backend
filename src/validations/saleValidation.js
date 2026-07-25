@@ -1,5 +1,5 @@
 const Joi = require("joi");
-const {  INVENTORY_TYPES, PAYMENT_TYPES, OWNERSHIP_TYPES } = require("../constants/app.constants");
+const { INVENTORY_TYPES, PAYMENT_TYPES, OWNERSHIP_TYPES } = require("../constants/app.constants");
 const objectId = Joi.string().pattern(/^[0-9a-fA-F]{24}$/);
 const arrObjectId = Joi.array().items(Joi.string().pattern(/^[0-9a-fA-F]{24}$/));
 
@@ -8,25 +8,25 @@ const saleValidationSchema = Joi.object({
   inventory: objectId.required().messages({
     'any.required': 'Inventory ID is required.',
     'string.base': 'Inventory ID must be a string.',
+    'string.pattern.base':'Invaid Inventory ID'
   }),
   buyers: arrObjectId.required().messages({
     'any.required': 'Customers Id is required.',
     'string.base': 'Customers ID must be a string.',
-  }), 
-   onwershipType:  Joi.string()
+    'string.pattern.base':'Invaid Customers ID'
+  }),
+  onwershipType: Joi.string()
     .valid(...OWNERSHIP_TYPES)
     .required().messages({
       "any.required": "OWNERSHIP type is required.",
       "string.base": "OWNERSHIP type must be a string.",
       "any.only": `OWNERSHIP type must be one of: ${OWNERSHIP_TYPES.join(", ")}.`,
-    }), 
-   
-   
-  sellingPrice: Joi.number().optional().allow(null,0).messages({
+    }),
+  sellingPrice: Joi.number().optional().allow(null, 0).messages({
     "any.required": "Selling Price is required.",
     "number.base": "Selling Price must be a Number."
   }),
-  actualPrice: Joi.number().optional().allow(null,0).messages({
+  actualPrice: Joi.number().optional().allow(null, 0).messages({
     "number.base": "Actual price must be a number."
   }),
   paymentType: Joi.string()
@@ -36,6 +36,14 @@ const saleValidationSchema = Joi.object({
       "string.base": "Payment type must be a string.",
       "any.only": `Payment type must be one of: ${PAYMENT_TYPES.join(", ")}.`,
     }),
+  image: Joi.string().dataUri().required().messages({
+    'any.required': 'Inventory Sale Document is required',
+    'string.dataUri': 'Invalid Image Format. Must be a valid Data URI'
+  }),
+  remarks: Joi.string().required().messages({
+    'any.required': 'Remarks is required',
+    'string.base': 'Remarks should be string',
+  })
 });
 
 const installmentPlanValidationSchema = Joi.object({
@@ -43,19 +51,19 @@ const installmentPlanValidationSchema = Joi.object({
     'any.required': 'sale ID is required.',
     'string.base': 'sale ID must be a string.',
   }),
-    inventory: objectId.required().messages({
+  inventory: objectId.required().messages({
     'any.required': 'Inventory ID is required.',
     'string.base': 'Inventory ID must be a string.',
   }),
   buyers: arrObjectId.required().messages({
     'any.required': 'Customers Id is required.',
     'string.base': 'Customers ID must be a string.',
-  }), 
+  }),
   sellingPrice: Joi.number().required().messages({
     "any.required": "Selling Price is required.",
     "number.base": "Selling Price must be a Number."
   }),
-  actualPrice: Joi.number().optional().allow(null,0).messages({
+  actualPrice: Joi.number().optional().allow(null, 0).messages({
     "number.base": "Actual price must be a number."
   }),
   category: Joi.string()
@@ -66,4 +74,4 @@ const installmentPlanValidationSchema = Joi.object({
 });
 
 
-module.exports = {saleValidationSchema,installmentPlanValidationSchema};
+module.exports = { saleValidationSchema, installmentPlanValidationSchema };

@@ -22,7 +22,7 @@ const customerDocumentValidationSchema = Joi.object({
     "any.required": "Document name is required.",
     "string.base": "Document name must be a string.",
   }),
-  other: Joi.string().optional().allow(null,'').messages({
+  other: Joi.string().optional().allow(null, '').messages({
     "string.base": "Other must be a string.",
   }),
   // images:Joi.array().items(Joi.string()).optional(),
@@ -48,7 +48,7 @@ const customerDocumentValidationSchema = Joi.object({
 
 });
 const inventoryDocumentValidationSchema = Joi.object({
-     customer: objectId.optional().allow(null,'').messages({
+  customer: objectId.optional().allow(null, '').messages({
     'any.required': 'Customer ID is required.',
     'string.base': 'Customer ID must be a string.',
   }),
@@ -71,7 +71,7 @@ const inventoryDocumentValidationSchema = Joi.object({
     "any.required": "Document name is required.",
     "string.base": "Document name must be a string.",
   }),
-  other: Joi.string().optional().allow(null,'').messages({
+  other: Joi.string().optional().allow(null, '').messages({
     "string.base": "Other must be a string.",
   }),
   attachments: Joi.array()
@@ -93,6 +93,45 @@ const inventoryDocumentValidationSchema = Joi.object({
 
 
 });
+
+const createNextOfKinValidationSchema = Joi.object({
+  name: Joi.string().required().messages({
+    "string.base": "Document Name must be a string",
+    "any.required": "Document Name is rerquired"
+  }),
+  partner: objectId.required().messages({
+    "any.required": "Partner ID is required",
+    "string.base": "Partner ID must be a string"
+  }),
+  type: Joi.string().required()
+    .valid(...DOCUMENT_TYPES)
+    .label('Document Type')
+    .messages({
+      'any.only': '{#label} must be one of the following: {#valids}',
+      'string.base': 'Document Type must be a string',
+      'any.required': 'Document Type is required'
+    }),
+  attachments: Joi.array()
+    .items(
+      Joi.object({
+        fileUrl: Joi.string().required().messages({
+          'any.only': 'File URL required in each attachment',
+          'string.base': 'File URL must be a string'
+        }),
+        tags: Joi.array().items(Joi.string()).default([])
+      })
+    )
+    .min(1)
+    .required()
+    .messages({
+      'array.min': 'At least one attachment is required',
+      'any.required': 'Attachments are required'
+    }),
+  others: Joi.string().optional().allow(null,'').messages({
+    'string.base':'Document others must be a string'
+  })
+});
+
 const updateDocumentValidationSchema = Joi.object({
 
 
@@ -128,9 +167,9 @@ const updateDocumentValidationSchema = Joi.object({
       "any.required": "Attachments are required.",
     }),
 
-  other: Joi.string().optional().allow(null,'').messages({
+  other: Joi.string().optional().allow(null, '').messages({
     "string.base": "Other must be a string.",
   }),
 });
 
-module.exports = {customerDocumentValidationSchema, inventoryDocumentValidationSchema, updateDocumentValidationSchema};
+module.exports = { customerDocumentValidationSchema, inventoryDocumentValidationSchema, updateDocumentValidationSchema , createNextOfKinValidationSchema};

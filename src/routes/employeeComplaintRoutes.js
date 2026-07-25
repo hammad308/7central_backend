@@ -1,18 +1,54 @@
-const router = require("express").Router();
-const employeesComplaintsController = require("../controllers/employeesComplaintsController.js");
-const menus = require("../constants/menus.constants");
-const { printRequest } = require("../logger")("EMPLOYEECOMPLAINT_CONTROLLER");
+const router = require('express').Router();
+const menus = require('../constants/menus.constants');
+const {
+  create,
+  getAll,
+  getOne,
+  update,
+  delete: deleteComplaint,
+  myComplaints,
+  getMyComplaint,
+  updateMyComplaint,
+} = require('../controllers/employeeComplaintController');
+const { printRequest } = require('../logger')('EMPLOYEE_COMPLAINT_CONTROLLER');
 const { protect, checkActionAccess } = require('../middlewares/protect');
 
-router.put("/update/:id", printRequest, protect, checkActionAccess(menus.employeecomplaints, 'update'), employeesComplaintsController.update);
-router.delete("/delete/:id", printRequest, protect, checkActionAccess(menus.employeecomplaints, 'delete'), employeesComplaintsController.delete);
-router.post("/create", printRequest, protect, checkActionAccess(menus.employeecomplaints, 'create'), employeesComplaintsController.create);
-router.get("/:id", printRequest, protect, checkActionAccess(menus.employeecomplaints, 'read'), employeesComplaintsController.getOne);
-router.get("/", printRequest, protect, checkActionAccess(menus.employeecomplaints, 'list'), employeesComplaintsController.getAll);
+// Admin / HR routes
+router
+  .route('/')
+  .post(printRequest, protect, checkActionAccess(menus.employeecomplaints, 'create'), create)
+  .get(printRequest, protect, checkActionAccess(menus.employeecomplaints, 'list'), getAll);
 
-router.post("/my-complaints/create", printRequest, protect, checkActionAccess('mycomplaints', 'create'), employeesComplaintsController.create);
-router.get("/my-complaints/", printRequest, protect, checkActionAccess('mycomplaints', 'list'), employeesComplaintsController.myComplaints);
-router.get("/my-complaints/:id", printRequest, protect, checkActionAccess('mycomplaints', 'read'), employeesComplaintsController.getMyComplaint);
-router.put("/my-complaints/:id", printRequest, protect, checkActionAccess('mycomplaints', 'update'), employeesComplaintsController.updateMyComplaint);
+router
+  .route('/:id')
+  .get(printRequest, protect, checkActionAccess(menus.employeecomplaints, 'read'), getOne)
+  .put(printRequest, protect, checkActionAccess(menus.employeecomplaints, 'update'), update)
+  .delete(printRequest, protect, checkActionAccess(menus.employeecomplaints, 'delete'), deleteComplaint);
+
+// Employee self‑service routes (my complaints)
+router.post(
+  '/my-complaints',
+  printRequest,
+  protect,
+  create // same create function, it will use req.user.employee if no employee in body
+);
+router.get(
+  '/my-complaints',
+  printRequest,
+  protect,
+  myComplaints
+);
+router.get(
+  '/my-complaints/:id',
+  printRequest,
+  protect,
+  getMyComplaint
+);
+router.put(
+  '/my-complaints/:id',
+  printRequest,
+  protect,
+  updateMyComplaint
+);
 
 module.exports = router;

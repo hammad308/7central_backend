@@ -19,6 +19,9 @@ const userValidation = Joi.object({
         'any.required': 'Password is required.',
         'string.empty': 'Password cannot be empty.',
     }),
+    role: Joi.string().pattern(/^[0-9a-fA-F]{24}$/).optional().messages({
+        "string.pattern.base":"Invalid Role ID"
+    })
 })
 
 module.exports = userValidation;

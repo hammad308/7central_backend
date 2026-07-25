@@ -7,14 +7,14 @@ const DB = process.env.DATABASE_URI;
 mongoose.set('strictQuery', false);
 
 const connectDB = () => {
-   mongoose.connect(DB)
-   .then(() =>  {
-      if(process.env.NODE_ENV === 'production') {
-         return logger.info('Database connected.')
+  mongoose.connect(DB)
+    .then(() => {
+      if (process.env.NODE_ENV === 'production') {
+        return logger.info('Database connected.')
       }
       console.log('Database connected.')
-   })
-   .catch(err => logger.error(`Database connection failed. ${err}`))
+    })
+    .catch(err => logger.error(`Database connection failed. ${err}`))
 }
 async function getNextInSequence(name) {
   const updatedDocument = await mongoose.connection.db
@@ -22,7 +22,7 @@ async function getNextInSequence(name) {
     .findOneAndUpdate(
       { _id: name },
       { $inc: { currentIDs: 1 } },
-      { returnDocument: "after" },
+      { upsert: true, returnDocument: "after" },
     );
   return updatedDocument.currentIDs;
 }
@@ -33,8 +33,8 @@ async function decreaseByOneInSequence(name) {
     .findOneAndUpdate(
       { _id: name },
       { $inc: { currentIDs: -1 } },
-      { returnDocument: "after" },
+      { upsert: true, returnDocument: "after" },
     );
   return updatedDocument.currentIDs;
 }
-module.exports =  {connectDB, getNextInSequence , decreaseByOneInSequence };
+module.exports = { connectDB, getNextInSequence, decreaseByOneInSequence };

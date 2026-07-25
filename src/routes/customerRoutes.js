@@ -13,7 +13,9 @@ const {
     getCustomerInventories,
     getCustomerInstallments,
     getCustomerPayments,
-    getCustomerPR
+    getCustomerPR,
+    createBuyerRepresentaitve,
+    createPotentialBuyer
 } = require("../controllers/customerController");
 const upload = require("../middlewares/multer");
 const { printRequest } = require("../logger")("CUSTOMER_CONTROLLER");
@@ -26,7 +28,6 @@ router.route('/')
         protect,
         checkActionAccess(menus.customers, "create"),
         setUploadDirectory(IMG_DIR.customer),
-        // upload.single('image') , 
         create
     )
     .get(printRequest, protect, checkActionAccess(menus.customers, "list"), getAll);
@@ -37,12 +38,21 @@ router.post('/joint-members', printRequest,
     setUploadDirectory(IMG_DIR.customer),
     upload.single('image'),
     createJoint);
+
 router.post('/next-of-kin', printRequest,
     protect,
     checkActionAccess(menus.customers, "create"),
-    setUploadDirectory(IMG_DIR.customer),
-    // upload.single('image') , 
     createNextOfKin);
+
+router.post('/buyer-representative', printRequest,
+    protect,
+    checkActionAccess(menus.customers, "create"),
+    createBuyerRepresentaitve);
+
+router.post('/potential-buyer', printRequest,
+    protect,
+    checkActionAccess(menus.customers, "create"),
+    createPotentialBuyer);
 
 router.put('/update-next-of-kin/:id', printRequest,
     protect,
@@ -50,6 +60,7 @@ router.put('/update-next-of-kin/:id', printRequest,
     setUploadDirectory(IMG_DIR.customer),
     // upload.single('image') , 
     updateNextOfKin);
+
 router.post('/progress/:id', printRequest, protect, checkActionAccess(menus.customers, "read"), getProgress);
 router.get('/:id/inventories', printRequest, protect, checkActionAccess(menus.customers, "read"), getCustomerInventories);
 router.get('/:id/installments', printRequest, protect, checkActionAccess(menus.customers, "read"), getCustomerInstallments);

@@ -1,5 +1,6 @@
 const Customer = require('../models/customerModel');
 const Partner = require('../models/partnerModel');
+const BuyerRepresentative = require('../models/buyerRepresentativeModel');
 const NotificationSetting = require('../models/notificationSettingModel');
 const Document = require('../models/documentModel');
 const Sale = require('../models/saleModel');
@@ -13,9 +14,11 @@ const { sendSuccessResponse, getLongAutoIncrementId } = require('../utils/helper
 const { uploadBase64Image } = require('../utils/uploadFiles');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
-const { customerValidationSchema, partnerValidationSchema } = require('../validations/customerValidations');
+const { customerValidationSchema, partnerValidationSchema, buyerRepresentativeValidationScehma } = require('../validations/customerValidations');
+const potentialBuyerValidationSchema = require("../validations/potentialBuyerValidation");
 const { getNextInSequence } = require('../utils/db');
-const { PREFIX_CUSTOMER_AUTOINCREMENTID, PREFIX_JOINT_AUTOINCREMENTID, PREFIX_KIN_AUTOINCREMENTID } = require('../constants/app.constants');
+const { PREFIX_CUSTOMER_AUTOINCREMENTID, PREFIX_JOINT_AUTOINCREMENTID, PREFIX_KIN_AUTOINCREMENTID, PREFIX_REFERAL_AUTOINCREMENTID } = require('../constants/app.constants');
+const PotentialBuyer = require('../models/potentialBuyerModel');
 
 
 const popObj = [
@@ -28,7 +31,12 @@ const popObj = [
 exports.create = catchAsync(async (req, res, next) => {
   const { error } = customerValidationSchema.validate(req.body);
   if (error) {
+    console.log(req.body);
     return next(new AppError(error.details[0].message, 400));
+  }
+  const existingCustomer = await Customer.findOne({ email: req.body.email });
+  if (existingCustomer) {
+    return next(new AppError("Email Already Taken By Another Customer", 422));
   }
   const createdBy = req.user._id;
   req.body.createdBy = createdBy;
@@ -140,6 +148,45 @@ exports.createNextOfKin = catchAsync(async (req, res, next) => {
   });
 });
 
+exports.createBuyerRepresentaitve = catchAsync(async (req, res, next) => {
+  const { error } = buyerRepresentativeValidationScehma.validate(req.body);
+  if (error) {
+    return next(new AppError(error.details[0].message, 400));
+  }
+  req.body.createdBy = req.user._id;
+  const customer = await Customer.findById(req.body.customer);
+  if (!customer) {
+    return next(new AppError("Customer not Found", 404));
+  }
+  const existingBuyerRepresentative = await BuyerRepresentative.findOne({ email: req.body.email });
+  if (existingBuyerRepresentative) {
+    return next(new AppError("Email already Taken", 422));
+  }
+  const buyerRepresentative = await BuyerRepresentative.create(req.body);
+
+  sendSuccessResponse(res, 200, logger, {
+    message: "Buyer Representative Created Successfully",
+    doc: buyerRepresentative
+  });
+});
+
+exports.createPotentialBuyer = catchAsync(async (req, res, next) => {
+  const { error } = potentialBuyerValidationSchema.validate(req.body);
+  if (error) {
+    return next(new AppError(error.details[0].message, 400))
+  }
+  const isCustomerExist = await Customer.findById(req.body.customer);
+  if (!isCustomerExist) {
+    return next(new AppError("Customer Not Found", 404))
+  }
+  req.body.createdBy = req.user._id;
+  const potentialBuyer = await PotentialBuyer.create(req.body);
+  sendSuccessResponse(res, 200, logger, {
+    message: potentialBuyer.potentialCustomers.length > 1 ? "Potential Customers Created Successfully" : "Potential Customer Created Successfully",
+    doc: potentialBuyer
+  })
+})
+
 exports.updateNextOfKin = catchAsync(async (req, res, next) => {
   const partnerId = req.params.id;
 
@@ -193,6 +240,7 @@ exports.getProgress = catchAsync(async (req, res, next) => {
   let steps = {
     general: false,
     nextOfKin: false,
+    referalProgram: false,
     notifications: false,
     documents: false,
     assignInventory: false,
@@ -214,6 +262,10 @@ exports.getProgress = catchAsync(async (req, res, next) => {
   }
   if (partners.some(p => p.type === 'next_of_kin')) {
     steps.nextOfKin = true;
+  }
+  const referal = await Referal.find({ customer: customerId });
+  if (referal) {
+    steps.referalProgram = true;
   }
   const notificationSetting = await NotificationSetting.findOne({ customer: customerId });
   if (notificationSetting) {

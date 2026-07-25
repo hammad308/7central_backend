@@ -2,7 +2,7 @@ const menus = {
     user: 'User',
     customers: 'Customer',
     projects: 'Project',
-    sectors: 'Sector',
+    blockOrFloor: 'Block/Floor',
     inventories: 'Inventory',
     receipts: 'Receipt',
     installments: 'Installment',
@@ -21,7 +21,9 @@ const menus = {
     employeeleaves:"EmployeeLeave",
     employees:"Employee",
     leaverules:"LeaveRule",
-    workinghours:"WorkingHour"
+    workinghours:"WorkingHour",
+    roles:'Role',
+    publicholidays:"PublicHoliday"
 }
 
 module.exports = menus;

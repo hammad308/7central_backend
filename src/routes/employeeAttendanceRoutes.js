@@ -1,15 +1,47 @@
-const router = require("express").Router();
-const employeesAttendancesController = require("../controllers/employeesAttendancesController.js");
-const menus = require("../constants/menus.constants");
-const { printRequest } = require("../logger")("EMPLOYEEATTENDENCE_CONTROLLER");
+const router = require('express').Router();
+const menus = require('../constants/menus.constants');
+const {
+  create,
+  checkOut,
+  getAll,
+  myAttendances,
+  getOne,
+  update,
+  delete: deleteAttendance,
+} = require('../controllers/employeeAttendanceController');
+const { printRequest } = require('../logger')('EMPLOYEE_ATTENDANCE_CONTROLLER');
 const { protect, checkActionAccess } = require('../middlewares/protect');
 
-router.put("/update/:id", printRequest, protect, checkActionAccess(menus.employeeattendances, 'update'), employeesAttendancesController.update);
-router.delete("/delete/:id", printRequest, protect, checkActionAccess(menus.employeeattendances, 'delete'), employeesAttendancesController.delete);
-router.post("/create", printRequest, protect, checkActionAccess(menus.employeeattendances, 'create'), employeesAttendancesController.create);
-router.get("/my-attendances", printRequest, protect, checkActionAccess('myattendances', 'read'), employeesAttendancesController.myAttendances);
-router.patch("/check-out", printRequest, protect, checkActionAccess('myattendances', 'update'), employeesAttendancesController.checkOut);
-router.get("/:id", printRequest, protect, checkActionAccess(menus.employeeattendances, 'read'), employeesAttendancesController.getOne);
-router.get("/", printRequest, protect, checkActionAccess(menus.employeeattendances, 'read'), employeesAttendancesController.getAll);
+router.post(
+  '/check-in',
+  printRequest,
+  protect,
+  create  
+);
+
+router.patch(
+  '/check-out',
+  printRequest,
+  protect,
+  checkOut
+);
+
+router.get(
+  '/my-attendances',
+  printRequest,
+  protect,
+  myAttendances
+);
+
+router
+  .route('/')
+  .get(printRequest, protect, checkActionAccess(menus.employeeattendances, 'list'), getAll)
+  .post(printRequest, protect, checkActionAccess(menus.employeeattendances, 'create'), create); 
+
+router
+  .route('/:id')
+  .get(printRequest, protect, checkActionAccess(menus.employeeattendances, 'read'), getOne)
+  .put(printRequest, protect, checkActionAccess(menus.employeeattendances, 'update'), update)
+  .delete(printRequest, protect, checkActionAccess(menus.employeeattendances, 'delete'), deleteAttendance);
 
 module.exports = router;

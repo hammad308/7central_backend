@@ -30,11 +30,11 @@ const generateUniqueUsername = async (baseUsername, maxRetries = 10) => {
     return username;
 };
 
-exports.googleLogin = () => catchAsync(async(req , res , next) => {
+exports.googleLogin = () => catchAsync(async (req, res, next) => {
     const { email, username, image } = req.body;
 
     if (!email || !username) {
-        return  next(new AppError("Missing required fields" , 400))
+        return next(new AppError("Missing required fields", 400))
     }
 
     let user = await User.findOne({ email });
@@ -47,14 +47,14 @@ exports.googleLogin = () => catchAsync(async(req , res , next) => {
             username: uniqueUsername,
             image: image || '',
             accountType: "google",
-            role:null
+            role: null
         });
 
         await user.save();
     }
 
-     // Check if user is blocked
-     if (user.status === "blocked") {
+    // Check if user is blocked
+    if (user.status === "blocked") {
         return next(
             new AppError(
                 user.blockReason
@@ -82,22 +82,22 @@ exports.googleLogin = () => catchAsync(async(req , res , next) => {
         message: "Login successful",
         doc: { ...user._doc, token },
     });
-   
+
 })
 
-exports.appleLogin = () => catchAsync(async(req , res , next) => {
-    const { email, username , appleIdentifier } = req.body;
+exports.appleLogin = () => catchAsync(async (req, res, next) => {
+    const { email, username, appleIdentifier } = req.body;
 
 
     if (!appleIdentifier) {
-        return  next(new AppError("Apple identifier is required." , 400))
+        return next(new AppError("Apple identifier is required.", 400))
     }
 
     let user = await User.findOne({ appleIdentifier });
 
     if (!user) {
-        if(!username || !email) {
-            return next(new AppError('User not exists. For registration email and username is required.' , 400))
+        if (!username || !email) {
+            return next(new AppError('User not exists. For registration email and username is required.', 400))
         }
 
         const uniqueUsername = await generateUniqueUsername(username);
@@ -107,15 +107,15 @@ exports.appleLogin = () => catchAsync(async(req , res , next) => {
             username: uniqueUsername,
             accountType: "apple",
             appleIdentifier,
-            role:null
+            role: null
 
         });
 
         await user.save();
     }
 
-     // Check if user is blocked
-     if (user.status === "blocked") {
+    // Check if user is blocked
+    if (user.status === "blocked") {
         return next(
             new AppError(
                 user.blockReason
@@ -143,11 +143,11 @@ exports.appleLogin = () => catchAsync(async(req , res , next) => {
         message: "Login successful",
         doc: { ...user._doc, token },
     });
-   
+
 })
 
-exports.registerUser = () => catchAsync( async (req, res, next) => {
-    let { username , email } = req.body;
+exports.registerUser = () => catchAsync(async (req, res, next) => {
+    let { username, email } = req.body;
 
     username = username.trim().toLowerCase();
 
@@ -156,26 +156,26 @@ exports.registerUser = () => catchAsync( async (req, res, next) => {
         return next(new AppError(error.details[0].message, 400));
     }
     // Check if phone or email already exists
-    // const usernameEixst = await User.findOne({ username });
-    // if (usernameEixst) {
-    //     return next(
-    //         new AppError("Username already taken. Please try another.", 400)
-    //     );
-    // }
+    const usernameEixst = await User.findOne({ username });
+    if (usernameEixst) {
+        return next(
+            new AppError("Username already taken. Please try another.", 400)
+        );
+    }
 
     const emailExist = await User.findOne({ email });
     if (emailExist) {
         return next(
             new AppError(
-                    emailExist?.status === 'blocked'
-                    ? 
-                        `Account with this email has been blocked. Please contact support.`
+                emailExist?.status === 'blocked'
+                    ?
+                    `Account with this email has been blocked. Please contact support.`
                     :
                     emailExist?.status === 'deleted'
-                    ?
+                        ?
                         'Sorry, account with this email has been deactivated. Forgot your password to register again.'
-                    :
-                    "Email already taken. Please try another.", 
+                        :
+                        "Email already taken. Please try another.",
                 400
             )
         );
@@ -195,12 +195,12 @@ exports.registerUser = () => catchAsync( async (req, res, next) => {
         const currentDate = moment();
         const user = await User.create({
             ...req.body,
-            accountType : 'password' ,
+            accountType: 'password',
             verification: {
                 emailToken: otp,
                 emailTokenExpire: moment(currentDate).add(10, "minutes"),
             },
-            role:null
+            role: null
 
         });
 
@@ -241,15 +241,15 @@ exports.login = () => catchAsync(async (req, res, next) => {
     identifier = identifier.trim().toLowerCase();
 
     const user = await User.findOne({
-        $or: [{ email: identifier }, ]
-            // { username: identifier }],
+        $or: [{ email: identifier },
+        { username: identifier }],
     }).select("+password");
 
-    if(user.accountType !== 'password') {
+    if (user.accountType !== 'password') {
         return next(new AppError(`It looks like you signed up using your ${user?.accountType} account. Please continue logging in with ${user?.accountType}.`, 400));
     }
-    
-    
+
+
     if (!user || !(await user.comparePassword(password))) {
         return next(new AppError("Invalid email/username or password", 401));
     }
@@ -320,7 +320,7 @@ exports.login = () => catchAsync(async (req, res, next) => {
 });
 
 exports.adminLogin = () => catchAsync(async (req, res, next) => {
-    let { identifier , password } = req.body;
+    let { identifier, password } = req.body;
 
     if (!identifier) {
         return next(new AppError("Email or username  is required.", 400));
@@ -330,19 +330,19 @@ exports.adminLogin = () => catchAsync(async (req, res, next) => {
         return next(new AppError("Please provide a password", 400));
     }
 
-     identifier = identifier.trim().toLowerCase();
+    identifier = identifier.trim().toLowerCase();
 
     const user = await User.findOne({
-        $or: [{ email: identifier }, 
-            { username: identifier }],
+        $or: [{ email: identifier },
+        { username: identifier }],
     }).select("+password");
 
-//     const user = await User.findOne({
-//         email ,  $or: [
-//     { isSuperAdmin: true },
-//     { role: { $ne: null } }
-//   ]
-//     }).select("+password");
+    //     const user = await User.findOne({
+    //         email ,  $or: [
+    //     { isSuperAdmin: true },
+    //     { role: { $ne: null } }
+    //   ]
+    //     }).select("+password");
 
     if (!user || !(await user.comparePassword(password))) {
         return next(new AppError("Invalid email or password", 401));
@@ -379,8 +379,8 @@ exports.adminLogin = () => catchAsync(async (req, res, next) => {
     });
 });
 
-exports.adminRegisterUser = () => catchAsync( async (req, res, next) => {
-    let { username , email } = req.body;
+exports.adminRegisterUser = () => catchAsync(async (req, res, next) => {
+    let { username, email } = req.body;
 
 
     const { error } = userValidations.validate(req.body);
@@ -388,20 +388,26 @@ exports.adminRegisterUser = () => catchAsync( async (req, res, next) => {
         return next(new AppError(error.details[0].message, 400));
     }
     username = username.trim().toLowerCase();
-
+    // Check if phone or email already exists
+    const usernameEixst = await User.findOne({ username });
+    if (usernameEixst) {
+        return next(
+            new AppError("Username already taken. Please try another.", 400)
+        );
+    }
     const emailExist = await User.findOne({ email });
     if (emailExist) {
         return next(
             new AppError(
-                    emailExist?.status === 'blocked'
-                    ? 
-                        `Account with this email has been blocked. Please contact support.`
+                emailExist?.status === 'blocked'
+                    ?
+                    `Account with this email has been blocked. Please contact support.`
                     :
                     emailExist?.status === 'deleted'
-                    ?
+                        ?
                         'Sorry, account with this email has been deactivated. Forgot your password to register again.'
-                    :
-                    "Email already taken. Please try another.", 
+                        :
+                        "Email already taken. Please try another.",
                 400
             )
         );
@@ -410,9 +416,9 @@ exports.adminRegisterUser = () => catchAsync( async (req, res, next) => {
     try {
         const user = await User.create({
             ...req.body,
-            accountType : 'password' ,
-            role : role?._id,
-            isEmailVerified : true ,
+            accountType: 'password',
+            role: role?._id,
+            isEmailVerified: true,
             verification: {
                 emailToken: null,
                 emailTokenExpire: null,
@@ -508,11 +514,11 @@ exports.verifyOtp = () => catchAsync(async (req, res, next) => {
     // Update the user
     const updatedUser = await User.findByIdAndUpdate(user._id, updateFields, { new: true });
 
-    if(_sendWelcomeEmail) {
+    if (_sendWelcomeEmail) {
         try {
             await sendWelcomeEmail(user)
         } catch (error) {
-            console.log({ welcomeEmailError : error })
+            console.log({ welcomeEmailError: error })
         }
     }
 
@@ -535,7 +541,7 @@ exports.verifyOtp = () => catchAsync(async (req, res, next) => {
 });
 
 exports.resendOtp = () => catchAsync(async (req, res, next) => {
-    const { email , type } = req.body;
+    const { email, type } = req.body;
 
     if (!email) {
         return next(new AppError("Please provide Email", 400));
@@ -591,7 +597,6 @@ exports.resendOtp = () => catchAsync(async (req, res, next) => {
 
 exports.profile = () => catchAsync(async (req, res, next) => {
     const doc = await User.findById(req.user._id);
-
     if (!doc) return next(new AppError("User not found.", 404));
     delete doc._doc.password;
     delete doc._doc.accountType;
@@ -650,7 +655,7 @@ exports.resetPassword = () => catchAsync(async (req, res, next) => {
     user.password = newPassword;
     user.verification.resetPasswordToken = undefined;
     user.verification.resetPasswordTokenExpire = undefined;
-    if(user.status ==="deleted") {
+    if (user.status === "deleted") {
         user.status = "active"
     }
     await user.save();

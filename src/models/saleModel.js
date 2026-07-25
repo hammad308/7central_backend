@@ -18,13 +18,13 @@ const saleSchema = new mongoose.Schema({
   }],
 
   // Combined name for display (e.g. "Ali + Ahmed + Sana")
-  buyersDisplayName: { 
-    type: String, 
-    required: true 
+  buyersDisplayName: {
+    type: String,
+    required: true
   },
 
   sellingPrice: { type: Number, required: true },
-  actualPrice:  { type: Number,default: null },
+  actualPrice: { type: Number,  default: null },
 
   plan: { type: mongoose.Schema.Types.ObjectId, ref: 'InstallmentPlan' },
   onwershipType: {
@@ -32,9 +32,9 @@ const saleSchema = new mongoose.Schema({
     enum: [...OWNERSHIP_TYPES],
     required: [true, "Ownership type is required."],
     index: true,
-    default:  function() {
-                  return this.buyers.length > 1?'joint': 'self';
-              } ,
+    default: function () {
+      return this.buyers.length > 1 ? 'joint' : 'self';
+    },
   },
   paymentType: {
     type: String,
@@ -42,6 +42,15 @@ const saleSchema = new mongoose.Schema({
     required: [true, "Payment type is required."],
     index: true,
   },
+  remarks:{
+    type:String,
+    required:true
+  },
+  image:{
+    type:String,
+    required:true
+  },
+
 
   status: { type: String, enum: SALE_STATUS, default: 'draft', index: true },
   transferredTo: { type: mongoose.Schema.Types.ObjectId, ref: 'Sale', default: null },

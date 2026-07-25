@@ -120,9 +120,6 @@ exports.updateOne = (Model, logger, options = {}) => catchAsync(async (req, res,
     //     req.body[imageField] = [...doc[imageField], ...newImages]; // Append new images to existing ones
     // }
 
-
-    console.log(req.body);
-
       if(req.body.image && req.body.image.startsWith('data:image/')) {
 
          const base64String = req.body.image.split(",")[1];

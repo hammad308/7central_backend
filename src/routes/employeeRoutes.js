@@ -1,15 +1,42 @@
-const router = require("express").Router();
-const employeesController = require("../controllers/employeesController.js");
-const menus = require("../constants/menus.constants");
-const { printRequest } = require("../logger")("EMPLOYEE_CONTROLLER");
+const router = require('express').Router();
+const menus = require('../constants/menus.constants');
+const {
+  create,
+  getAll,
+  getAllOfCompany,
+  getOne,
+  profile,
+  update,
+  delete: deleteEmployee,
+} = require('../controllers/employeeController');
+const { printRequest } = require('../logger')('EMPLOYEE_CONTROLLER');
 const { protect, checkActionAccess } = require('../middlewares/protect');
 
-router.post("/create", printRequest, protect, checkActionAccess(menus.employees, 'create'), employeesController.create);
-router.put("/update/:id", printRequest, protect, checkActionAccess(menus.employees, 'update'), employeesController.update);
-router.delete("/delete/:id", printRequest, protect, checkActionAccess(menus.employees, 'delete'), employeesController.delete);
-router.get("/of-company/:id", printRequest, protect, checkActionAccess(menus.employees, 'list'), employeesController.getAllOfCompany);
-router.get("/profile/:id", printRequest, protect, checkActionAccess(menus.employees, 'read'), employeesController.profile);
-router.get("/:id", printRequest, protect, checkActionAccess(menus.employees, 'read'), employeesController.getOne);
-router.get("/", printRequest, protect, checkActionAccess(menus.employees, 'list'), employeesController.getAll);
+router
+  .route('/')
+  .post(printRequest, protect, checkActionAccess(menus.employees, 'create'), create)
+  .get(printRequest, protect, checkActionAccess(menus.employees, 'list'), getAll);
+
+router.get(
+  '/company/:companyId',
+  printRequest,
+  protect,
+  checkActionAccess(menus.employees, 'list'),
+  getAllOfCompany
+);
+
+router.get(
+  '/profile/:id',
+  printRequest,
+  protect,
+  checkActionAccess(menus.employees, 'read'),
+  profile
+);
+
+router
+  .route('/:id')
+  .get(printRequest, protect, checkActionAccess(menus.employees, 'read'), getOne)
+  .put(printRequest, protect, checkActionAccess(menus.employees, 'update'), update)
+  .delete(printRequest, protect, checkActionAccess(menus.employees, 'delete'), deleteEmployee);
 
 module.exports = router;

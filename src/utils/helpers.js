@@ -1,26 +1,27 @@
-exports.sendSuccessResponse = ( res , statusCode = 200 , logger = null , data ) => {
-    const response = {
-        status : 'success' ,
-        success : true ,
-        data 
-    }
-    if (logger) logger.info(JSON.stringify({
-        statusCode ,
-        success : true
-    }))
-    res.status(statusCode).json(response)
+exports.sendSuccessResponse = (res, statusCode = 200, logger = null, data) => {
+  const response = {
+    status: 'success',
+    success: true,
+    data
+  }
+  if (logger) logger.info(JSON.stringify({
+    statusCode,
+    success: true
+  }))
+  res.status(statusCode).json(response)
 }
 
-exports.sendErrorResponse = ( res , statusCode = 400 , logger = null , data ) => {
-    const response = {
-        status : 'error' ,
-        success : false ,
-        data 
-    }
-    if (logger) logger.info(JSON.stringify(response))
-    res.status(statusCode).json(response)
+exports.sendErrorResponse = (res, statusCode = 400, logger = null, data) => {
+  const response = {
+    status: 'error',
+    success: false,
+    data
+  }
+  if (logger) logger.error(JSON.stringify(response))
+  res.status(statusCode).json(response)
 }
 exports.getLongAutoIncrementId = (prefix, newIDNumber) => {
+  console.log(newIDNumber);
   if (typeof prefix !== 'string')
     throw new Error('prefix should be a string');
   if (typeof newIDNumber !== 'number')
@@ -31,8 +32,8 @@ exports.getLongAutoIncrementId = (prefix, newIDNumber) => {
   return longAutoIncrementId;
 }
 
-exports.displayNameFromBuyers=(buyers = []) =>{
+exports.displayNameFromBuyers = (buyers = []) => {
   return buyers.map(b => `${b.name}`.trim())
-               .filter(Boolean)
-               .join(' + ');
+    .filter(Boolean)
+    .join(' + ');
 }

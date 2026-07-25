@@ -1,13 +1,60 @@
-const router = require("express").Router();
-const departmentsController = require("../controllers/departmentsController.js");
-const menus = require("../constants/menus.constants");
-const { printRequest } = require("../logger")("DEPARTMENT_CONTROLLER");
+const router = require('express').Router();
+const menus = require('../constants/menus.constants');
+const {
+  create,
+  getAllByCompany,
+  getAll,
+  getOne,
+  update,
+  delete: deleteDepartment,
+} = require('../controllers/departmentController');
+const { printRequest } = require('../logger')('DEPARTMENT_CONTROLLER');
 const { protect, checkActionAccess } = require('../middlewares/protect');
 
-router.post("/create", printRequest, protect, checkActionAccess(menus.departments, 'create'), departmentsController.create);
-router.put("/update/:id", printRequest, protect, checkActionAccess(menus.departments, 'update'), departmentsController.update);
-router.delete("/delete/:id", printRequest, protect, checkActionAccess(menus.departments, 'delete'), departmentsController.delete);
-router.get("/:id", printRequest, protect, checkActionAccess(menus.departments, 'read'), departmentsController.getOne);
-router.get("/of-company/:id", printRequest, protect, checkActionAccess(menus.departments, 'list'), departmentsController.getAll);
+// CRUD for a single department
+router
+  .route('/')
+  .post(
+    printRequest,
+    protect,
+    checkActionAccess(menus.departments, 'create'),
+    create
+  )
+  .get(
+    printRequest,
+    protect,
+    checkActionAccess(menus.departments, 'list'),
+    getAll
+  );
+
+// List departments for a specific company
+router.get(
+  '/company/:companyId',
+  printRequest,
+  protect,
+  checkActionAccess(menus.departments, 'list'),
+  getAllByCompany
+);
+
+router
+  .route('/:id')
+  .get(
+    printRequest,
+    protect,
+    checkActionAccess(menus.departments, 'read'),
+    getOne
+  )
+  .put(
+    printRequest,
+    protect,
+    checkActionAccess(menus.departments, 'update'),
+    update
+  )
+  .delete(
+    printRequest,
+    protect,
+    checkActionAccess(menus.departments, 'delete'),
+    deleteDepartment
+  );
 
 module.exports = router;

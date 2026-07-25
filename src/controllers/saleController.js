@@ -14,8 +14,8 @@ const Installment = require("../models/installmentModel");
 const handlerFactory = require('./factories/handlerFactory');
 const Customer = require("../models/customerModel");
 const { buildInstallmentRows, applyPaidAmountFIFO } = require("../utils/installmentPlanBuilder");
+const { uploadBase64Image } = require("../utils/uploadFiles");
 const { default: mongoose } = require("mongoose");
-
 
 
 exports.createSale = catchAsync(async (req, res, next) => {
@@ -34,6 +34,12 @@ exports.createSale = catchAsync(async (req, res, next) => {
     return next(new AppError("One or more buyers not found", 404));
   }
   const buyersDisplayName = displayNameFromBuyers(checkCustomers);
+  if (req.body.image && req.body.image.startsWith('data:image/')) {
+    const basse64String = req.body.image.split(',')[1];
+    const uploadDir = `/uploads/${req.uploadDirectory}`;
+    const result = await uploadBase64Image(basse64String, uploadDir);
+    req.body.image = `${req.uploadDirectory}/${result.fileName}`;
+  }
   const sale = await Sale.create({
     ...req.body,
     buyersDisplayName,
@@ -58,6 +64,7 @@ exports.createSale = catchAsync(async (req, res, next) => {
     doc: { inventory: checkInventory, sale }
   });
 });
+
 exports.changeInventoryOwnershipSale = catchAsync(async (req, res, next) => {
   const { error } = saleValidationSchema.validate(req.body);
   if (error) {
@@ -140,140 +147,7 @@ exports.createPaymentPlan = catchAsync(async (req, res, next) => {
   const plan = await InstallmentPlan.create(value);
   sale.plan = plan._id;
   await sale.save();
-  const rows = [];
-  const monthMap = new Map(); // "YYYY-MM" -> index in rows
-  // const today = dayjs().startOf("day");
-  const today = value.bookingDate
-    ? dayjs(value.bookingDate).startOf("day")
-    : dayjs().startOf("day");
-  const monthKey = (d) => dayjs(d).format("YYYY-MM");
-  // helper: schedule payment without overlapping month
-  const push = (kind, dueDate, amount) => {
-    if (!amount || amount <= 0 || !dueDate) return;
-    let d = dayjs(dueDate).startOf("day");
-    let safety = 0;
-    // move forward month-by-month until a free month is found
-    while (safety++ < 2400) {
-      const key = monthKey(d);
-      if (!monthMap.has(key)) {
-        monthMap.set(key, rows.length);
-        rows.push({
-          plan: plan._id,
-          sale: sale._id,
-          inventory: sale.inventory,
-          type: kind,
-          dueDate: d.toDate(),
-          amount,
-          status: "un-paid",
-          createdBy: req.user?._id,
-        });
-        return;
-      }
-      d = d.add(1, "month");
-    }
-    throw new Error("Could not schedule installment without overlap");
-  };
 
-  // ── 1) Milestones (highest priority) ──────────────────────────
-  if (value.fullPayment) {
-    push("full_payment", today.toDate(), value.fullPayment);
-  }
-
-  if (value.downPayment) {
-    push("down_payment", today.toDate(), value.downPayment);
-  }
-
-  if (value.allocation) {
-    push("allocation", today.add(30, "day").toDate(), value.allocation);
-  }
-
-  if (value.confirmation) {
-    push("confirmation", today.add(60, "day").toDate(), value.confirmation);
-  }
-
-  // if (value.possession) {
-  //   push("possession", today.add(36, "month").toDate(), value.possession);
-  // }
-
-  // NOTE:
-  // We now push balloons BEFORE monthly so balloons keep their months
-  // and monthly payments get shifted when there is a clash.
-  // You can configure balloon.duration = 6 months for "Half Yearly" like in the sheet.
-
-  // ── 2) Balloon / Half-yearly stream ──────────────────────────
-  if (value.balloon?.count) {
-    let d = value.balloon.startDate || today.add(6, "month").toDate();
-    for (let i = 0; i < value.balloon.count; i++) {
-      push("balloon", d, value.balloon.amount);
-      d = addPeriod(d, value.balloon.duration); // e.g. 6 months
-    }
-  }
-
-  if (value.monthlyBalloon?.count) {
-    let d = value.monthlyBalloon.startDate || today.add(6, "month").toDate();
-    for (let i = 0; i < value.monthlyBalloon.count; i++) {
-      push("monthly_balloon", d, value.monthlyBalloon.amount);
-      d = addPeriod(d, value.monthlyBalloon.duration); // e.g. 6 months
-    }
-  }
-
-  // ── 3) Quarterly stream ──────────────────────────────────────
-  if (value.quarterly?.count) {
-    let d = value.quarterly.startDate || today.add(3, "month").toDate();
-    for (let i = 0; i < value.quarterly.count; i++) {
-      push("quarterly", d, value.quarterly.amount);
-      d = addPeriod(d, value.quarterly.duration);
-    }
-  }
-
-  // ── 4) Monthly stream (lowest priority, will shift the most) ─
-  if (value.monthly?.count) {
-    let d = value.monthly.startDate || today.add(1, "month").toDate();
-    for (let i = 0; i < value.monthly.count; i++) {
-      push("monthly", d, value.monthly.amount);
-      d = addPeriod(d, value.monthly.duration);
-    }
-  }
-
-  // ── 5) Possession (always last) ──────────────────────────
-  if (value.possession && rows.length > 0) {
-    // find last due date
-    const lastDate = rows.reduce((max, r) =>
-      r.dueDate > max ? r.dueDate : max
-      , rows[0].dueDate);
-
-    // add 1 month after last installment
-    const possessionDate = dayjs(lastDate)
-      .add(1, "month")
-      .startOf("day")
-      .toDate();
-
-    rows.push({
-      plan: plan._id,
-      sale: sale._id,
-      inventory: sale.inventory,
-      type: "possession",
-      dueDate: possessionDate,
-      amount: value.possession,
-      status: "un-paid",
-      createdBy: req.user?._id,
-    });
-  }
-
-  // ── Final clean-up: sort by date and assign seq ──────────────
-  rows.sort((a, b) => a.dueDate - b.dueDate);
-
-  let seq = 1;
-  for (const r of rows) {
-    r.seq = seq++;
-  }
-
-
-  const docs = await Installment.insertMany(rows);
-  const total = docs.reduce((s, r) => s + r.amount, 0);
-
-  sale.status = "active";
-  await sale.save();
 
   // if you want plan.totalScheduled to be the sum of all rows, uncomment:
   // plan.totalScheduled = total;
@@ -282,8 +156,31 @@ exports.createPaymentPlan = catchAsync(async (req, res, next) => {
   sendSuccessResponse(res, 200, logger, {
     message: "Inventory Purchase plan created successfully.",
     plan,
+    sale,
+  });
+});
+
+exports.approvePurchasePlan = catchAsync(async (req, res, next) => {
+  const plan = await InstallmentPlan.findById(req.params.id);
+  if (!plan) {
+    return next(new AppError("Installment Not Found Or You entered Invalid Installment Plan ID", 400))
+  }
+  if (plan.isApproved) {
+    return next(new AppError("This payment plan is already approved!", 400));
+  }
+  plan.isApproved = true;
+  await plan.save();
+  const rows = buildInstallmentRows(plan, plan.sale, req.user._id);
+  const docs = await Installment.insertMany(rows);
+  const total = docs.reduce((s, r) => s + r.amount, 0);
+
+  const sale = await Sale.findByIdAndUpdate(plan.sale, { status: "active" }, { runValidators: true, returnDocument: "after" });
+  sendSuccessResponse(res, 200, logger, {
+    message: "Inventory Purchase plan approved successfully.",
+    plan,
     installments: docs,
     sale,
+    totalAmount: total
   });
 });
 
@@ -410,7 +307,7 @@ exports.getPaymentPlan = catchAsync(async (req, res, next) => {
   });
 });
 const popItems = [
-  { path: 'plan', },
+  { path: 'plan' },
   { path: 'sale', populate: { path: 'buyers', select: " name fatherName cnic phoneNumber email " } },
   {
     path: 'inventory', populate: [
@@ -480,16 +377,3 @@ exports.getSingleInventoryAllOwnerShips = catchAsync(async (req, res, next) => {
   }
   handlerFactory.getAll(OwnerShipHistory, popItems2, logger, query)(req, res, next)
 });
-
-function addPeriod(d, durationStr) {
-  const map = {
-    'Monthly': { months: 1 },
-    'Quarterly': { months: 3 },
-    'Half Yearly': { months: 6 },
-    'Monthly + Half Yearly': { months: 6 },
-    'Yearly': { years: 1 }
-  };
-  const inc = map[durationStr];
-  if (!inc) throw new Error(`Unknown duration ${durationStr}`);
-  return dayjs(d).add(inc.months || 0, 'month').add(inc.years || 0, 'year').toDate();
-}

@@ -54,7 +54,7 @@ const inventorySchema = new Schema({
   },
   status: {
     type: String,
-    enum: ['not_assigned', 'assigned', 'full_paid', 'blocked', 'deleted', 'hand_over', 'in_installment'],
+    enum: ['not_assigned', 'assigned', 'full_paid', 'blocked', 'deleted', 'hand_over', 'in_installment','reserved','future-sale'],
     default: 'not_assigned',
     index: true
 
