@@ -85,7 +85,7 @@ const customerValidationSchema = Joi.object({
     .messages({
       'string.base': 'Filer Type must be a string',
       'any.only': '{#label} must be one of the following: {#valids}',
-      'any.required': 'filer Type is required, When you select Customer Type [Original Buyer]'
+      'any.required': 'filer Type is required, When you select Customer Type of Original Buyer'
     }),
   nttNumber: Joi.string().when('filerType', {
     is: Joi.exist().valid('filer'),
@@ -138,7 +138,7 @@ const partnerValidationSchema = Joi.object({
     'string.base': 'Email must be a string'
   }),
   passportNumber: Joi.string().allow(null, '').messages({
-    'string.base': 'Passport name must be a string.',
+    'string.base': 'Passport Numner must be a string.',
   }),
   phoneNumber: Joi.string().required().messages({
     'any.required': 'Phone number is required',

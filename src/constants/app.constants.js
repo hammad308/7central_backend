@@ -64,6 +64,18 @@ const SALE_STATUS = [
   'draft', 'active', 'completed', 'cancelled', 'defaulted', 'transferred'
 ];
 
+const LEAD_SOURCE = [
+  'campaign', 'google_ads_search', 'dealer', 'walking_customer'
+];
+
+const CAMPAIGN_TYPES = [
+  'public_realtion', 'brand', 'media'
+];
+
+const CAMPAIGN_PERIOD = [
+  'day', 'weekly', 'monthly'
+];
+
 
 //Prefixes for auto increment IDs
 const PREFIX_PROJECT_AUTOINCREMENTID = `PT-${APP_SHORT_NAME}-`;
@@ -109,8 +121,11 @@ module.exports = {
   SALE_STATUS,
   INSTALLMENT_TYPE,
   INSTALLMENT_STATUS,
+  LEAD_SOURCE,
   OWNERSHIP_TYPES,
   PAYMENT_TYPES,
+  CAMPAIGN_TYPES,
+  CAMPAIGN_PERIOD,
   NUMBERS_DIR,
   PREFIX_COMPANY_AUTOINCREMENTID,
   PREFIX_DEPARTMENT_AUTOINCREMENTID,

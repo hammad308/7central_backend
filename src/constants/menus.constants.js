@@ -23,7 +23,10 @@ const menus = {
     leaverules:"LeaveRule",
     workinghours:"WorkingHour",
     roles:'Role',
-    publicholidays:"PublicHoliday"
+    publicholidays:"PublicHoliday",
+    lead:"Lead",
+    dealer:"Dealer",
+    campaign:"Campaign"
 }
 
 module.exports = menus;

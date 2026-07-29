@@ -6,29 +6,46 @@ const APIFeatures = require('../../utils/APIFeatures');
 const uploadImage = require('../../utils/uploadImage');
 const { uploadBase64Image } = require('../../utils/uploadFiles');
 
-exports.createOne = (Model , docValidation = null , logger , options = {} ) => catchAsync(async(req , res , next) => {
-    const { imageField = 'image', isSingleImage = true , imgDir } = options;
-    
+exports.createOne = (Model, docValidation = null, logger, options = {}) => catchAsync(async (req, res, next) => {
+    const { fieldToAddInRequestBody } = options;
     // Handle single image upload
-    if (req.file && isSingleImage) {
-        const newImage = req.file.location;
-        req.body[imageField] = newImage;
+    if (req.body.image && req.body.image.startsWith('data:image/')) {
+        const base64String = req.body.image.split(',')[1];
+        const uploadDir = `/uploads/${req.uploadDirectory}`;
+        const result = await uploadBase64Image(base64String, uploadDir);
+        const relativeAddress = `/${req.uploadDirectory}/${result.fileName}`;
+        req.body.image = relativeAddress;
     }
     // Handle multiple images upload
-    if (req.files && !isSingleImage && req.files.length > 0) {
-        const newImages = req.files.map(file => file.location);
-        req.body[imageField] = [...doc[imageField], ...newImages]; // Append new images to existing ones
+    if (req.body.attachments && req.body.attachments.length > 0) {
+        let attachments = [];
+        const uploadDir = `/uploads${req.uploadDir}`;
+        for (let i = 0; i < req.body.attachments.length; i++) {
+            if (!req.body.attachments[i]) continue;
+            const file = req.body.attachments[i];
+            if (!file) continue;
+            const base64String = req.body.attachments[i].split(",")[1];
+            if (!base64String) continue;
+            const result = await uploadBase64Image(base64String, uploadDir);
+            const relativeAddress = `/${req.uploadDirectory}/${result.fileName}`;
+            attachments.push(relativeAddress);
+        }
+        req.body.attachments = attachments;
     }
-    if(docValidation){
+    if (docValidation) {
         const { error } = docValidation.validate(req.body);
-        if(error){
-            return next(new AppError(error.details[0].message , 400))
+        if (error) {
+            return next(new AppError(error.details[0].message, 400))
         }
     }
+    if (fieldToAddInRequestBody === "createdBy") {
+        req.body[fieldToAddInRequestBody] = req.user._id;
+    }
+    const doc= await Model.findOne({})
     const newDoc = await Model.create(req.body);
-    return sendSuccessResponse(res , 201 , logger , {
-        message : 'Created successfully.' ,
-        doc : newDoc 
+    return sendSuccessResponse(res, 201, logger, {
+        message: 'Created successfully.',
+        doc: newDoc
     })
 });
 
@@ -41,7 +58,7 @@ exports.getMy = (Model, populateItems = {}, logger, query = {}) => {
             .sort()
             .paginate();
         const docs = await features.query.populate(populateItems);
-        const docsCount = await Model.countDocuments({...query , ...features.queryObj});
+        const docsCount = await Model.countDocuments({ ...query, ...features.queryObj });
         const pages = Math.ceil(docsCount / features.pageSize);
         sendSuccessResponse(res, 200, logger, {
             docs,
@@ -53,14 +70,15 @@ exports.getMy = (Model, populateItems = {}, logger, query = {}) => {
 };
 
 exports.getAll = (Model, populateItems = {}, logger, query = {}) => {
-    return catchAsync(async (req, res, next) => {;
+    return catchAsync(async (req, res, next) => {
+        ;
         const features = new APIFeatures(Model.find(query), req.query)
             .filter()
             .limitFields()
             .sort()
             .paginate();
         const docs = await features.query.populate(populateItems);
-        const docsCount = await Model.countDocuments({...query , ...features.queryObj});
+        const docsCount = await Model.countDocuments({ ...query, ...features.queryObj });
         const pages = Math.ceil(docsCount / features.pageSize);
         sendSuccessResponse(res, 200, logger, {
             docs,
@@ -71,15 +89,15 @@ exports.getAll = (Model, populateItems = {}, logger, query = {}) => {
     });
 };
 
-exports.getTotal = (Model, populateItems = '' , logger) => catchAsync(async(req , res , next) => {
-    const features = new APIFeatures(Model.find() , req.query)
-    .filter()
-    .limitFields()
-    .sort();  
+exports.getTotal = (Model, populateItems = '', logger) => catchAsync(async (req, res, next) => {
+    const features = new APIFeatures(Model.find(), req.query)
+        .filter()
+        .limitFields()
+        .sort();
     const docs = await features.query.populate(populateItems)
     const docCount = await Model.countDocuments(features.queryObj);
-    sendSuccessResponse(res , 200 , logger , {
-        docs , docCount 
+    sendSuccessResponse(res, 200, logger, {
+        docs, docCount
     });
 });
 
@@ -89,7 +107,7 @@ exports.getOne = (Model, populateItems = '', logger, paramName = 'id', field = '
     if (field === '_id') {
         query = Model.findById(value);
     } else {
-        query = Model.findOne({ [field] : value });
+        query = Model.findOne({ [field]: value });
     }
     const doc = await query.populate(populateItems);
     if (!doc) return next(new AppError(`No record found with that ${field}.`, 404));
@@ -105,7 +123,7 @@ exports.updateOne = (Model, logger, options = {}) => catchAsync(async (req, res,
         return next(new AppError('Document not found.', 404));
     }
 
-    if(doc?.isSuperAdmin){
+    if (doc?.isSuperAdmin) {
         return next(new AppError('You cannot update super admin user.', 400));
     }
     // Handle single image upload
@@ -120,22 +138,22 @@ exports.updateOne = (Model, logger, options = {}) => catchAsync(async (req, res,
     //     req.body[imageField] = [...doc[imageField], ...newImages]; // Append new images to existing ones
     // }
 
-      if(req.body.image && req.body.image.startsWith('data:image/')) {
+    if (req.body.image && req.body.image.startsWith('data:image/')) {
 
-         const base64String = req.body.image.split(",")[1];
+        const base64String = req.body.image.split(",")[1];
         const uploadDir = `/uploads/${req.uploadDirectory}`;
-    
+
         const result = await uploadBase64Image(base64String, uploadDir);
         const relativeAddress = `${req.uploadDirectory}/${result.fileName}`;
         req.body.image = relativeAddress;
-      }
-      
+    }
+
     // Handle password hashing if admin wants to update user password case
     if (req.body.password) {
         req.body.password = await bcrypt.hash(req.body.password, 10);
     }
 
-    
+
     const updatedDoc = await Model.findByIdAndUpdate(id, req.body, {
         new: true,
         runValidators: true
@@ -148,27 +166,27 @@ exports.updateOne = (Model, logger, options = {}) => catchAsync(async (req, res,
 });
 
 
-exports.deleteOne = (Model , logger ) => catchAsync(async( req , res , next) => {
+exports.deleteOne = (Model, logger) => catchAsync(async (req, res, next) => {
     const user = await Model.findById(req.params.id);
-    if(!user){
-        return next(new AppError('Document not found.' , 404))
+    if (!user) {
+        return next(new AppError('Document not found.', 404))
     }
-    if(user?.isSuperAdmin){
+    if (user?.isSuperAdmin) {
         return next(new AppError('You can not update super admin user.', 400));
     }
-    const doc = await Model.findByIdAndUpdate(req.params.id , { status : 'deleted'} , {
-        new : true 
+    const doc = await Model.findByIdAndUpdate(req.params.id, { status: 'deleted' }, {
+        new: true
     });
-    sendSuccessResponse(res , 200 , logger , {
-        message : 'Deleted successfully.' ,
+    sendSuccessResponse(res, 200, logger, {
+        message: 'Deleted successfully.',
         doc
     });
 });
 
-exports.removeFromDb = (Model , logger ) => catchAsync(async( req , res , next) => {
+exports.removeFromDb = (Model, logger) => catchAsync(async (req, res, next) => {
     const doc = await Model.findByIdAndDelete(req.params.id);
-    
-    sendSuccessResponse(res , 200 , logger , {
-        message : 'Deleted successfully.' ,
+
+    sendSuccessResponse(res, 200, logger, {
+        message: 'Deleted successfully.',
     })
 });

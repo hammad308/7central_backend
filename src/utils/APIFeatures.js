@@ -7,7 +7,7 @@ class APIFeatures {
     filter() {
         // Start with a clean query object
         let queryObj = { ...this.queryStr };
-        const excludeFields = ['sort', 'limit', 'page', 'fields', 'pageSize'];
+        const excludeFields = ['sort', 'limit', 'page', 'fields', 'pageSize', 'dateFilter'];
         excludeFields.forEach((el) => delete queryObj[el]);
 
         // Include all remaining fields from queryObj
@@ -17,6 +17,39 @@ class APIFeatures {
         if (queryObj.status) {
             queryStr.status = queryObj.status;
         }
+
+        if (this.queryStr.dateFilter) {
+            const now = new Date();
+            const startDate = new Date();
+            const endDate = new Date();
+            switch (this.queryStr.dateFilter) {
+                case 'today':
+                    startDate.setHours(0, 0, 0, 0);
+                    endDate.setHours(23, 59, 59, 999);
+                    queryStr.createdAt = { $gte: startDate, $lte: endDate };
+                    break;
+                case 'yesterday':
+                    startDate.setDate(now.getDate() - 1);
+                    startDate.setHours(0, 0, 0, 0);
+                    endDate.setDate(now.getDate() - 1);
+                    endDate.setHours(23, 59, 59, 999);
+                    queryStr.createdAt = { $gte: startDate, $lte: endDate };
+                    break;
+                case 'last_7_days':
+                    startDate.setDate(now.getDate() - 7);
+                    startDate.setHours(0, 0, 0, 0);
+                    queryStr.createdAt = { $gte: startDate };
+                    break;
+                case 'last_30_days':
+                    startDate.setDate(now.getDate() - 30);
+                    startDate.setHours(0, 0, 0, 0);
+                    queryStr.createdAt = { $gte: startDate };
+                    break;
+                default:
+                    break;
+            }
+        }
+
 
         // Handle keyword search
         if (queryObj.keyword) {
