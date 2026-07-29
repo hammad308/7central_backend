@@ -7,11 +7,15 @@ const campaignValidationSchema = require("../validations/campaignValidation");
 const handlerFactory = require("./factories/handlerFactory");
 const APIFeatures = require("../utils/APIFeatures");
 
+const popObj = [
+    { path: "createdBy", select: "username image gender -_id" }
+]
+
 exports.createCampaign = catchAsync(async (req, res, next) => {
     if (req.body.name) {
-        const existingCompaign = await Campaign.findOne({name: req.body.name});
-        if(existingCompaign){
-            return next(new AppError("Campaign with this name already exists",422));
+        const existingCompaign = await Campaign.findOne({ name: req.body.name });
+        if (existingCompaign) {
+            return next(new AppError("Campaign with this name already exists", 422));
         }
     }
     handlerFactory.createOne(Campaign, campaignValidationSchema, logger, {
@@ -19,12 +23,10 @@ exports.createCampaign = catchAsync(async (req, res, next) => {
     })(req, res, next);
 });
 
-exports.getCampaign = catchAsync(async (req, res, next) => {
-
-});
+exports.getCampaign = handlerFactory.getOne(Campaign, popObj, logger);
 
 exports.updateCampaign = catchAsync(async (req, res, next) => {
-
+    
 });
 
 exports.getAllCampaigns = catchAsync(async (req, res, next) => {

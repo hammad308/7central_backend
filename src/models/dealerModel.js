@@ -1,9 +1,14 @@
 const mongoose = require("mongoose");
+const { getLongAutoIncrementId } = require("../utils/helpers");
 
 const dealerSchema = new mongoose.Schema({
-    codeId: {
+    autoIncrementId: {
         type: String,
-        required: true
+        default:null,
+    },
+    longAutoIncrementId:{
+        type:String,
+        default:null
     },
     name: {
         type: String,
@@ -20,7 +25,7 @@ const dealerSchema = new mongoose.Schema({
     },
     dealerType: {
         type: String,
-        enum: ['7central_registered', 'dha_registered', 'freelance_regsitered'],
+        enum: ['7central_registered', 'dha_registered', 'freelance_registered'],
         default: 'freelance_registered',
         index: true
     },
@@ -69,11 +74,11 @@ const dealerSchema = new mongoose.Schema({
         trim: true,
         lowercase: true,
     },
-    whatsappNumber: {
+    whatsAppNumber: {
         type: String,
         required: [true, 'WhatsApp number is required']
     },
-    whatsappNumber2: {
+    whatsAppNumber2: {
         type: String,
         default: ""
     },
@@ -115,6 +120,10 @@ const dealerSchema = new mongoose.Schema({
         enum: ['active', 'inactive', 'resigned', 'terminated'],
         default: 'active',
         index: true
+    },
+    createdBy:{
+        type:mongoose.Schema.Types.ObjectId,
+        ref:"User"
     }
 }, {
     timestamps: true

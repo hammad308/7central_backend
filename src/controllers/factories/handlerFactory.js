@@ -41,7 +41,7 @@ exports.createOne = (Model, docValidation = null, logger, options = {}) => catch
     if (fieldToAddInRequestBody === "createdBy") {
         req.body[fieldToAddInRequestBody] = req.user._id;
     }
-    const doc= await Model.findOne({})
+    const doc = await Model.findOne({})
     const newDoc = await Model.create(req.body);
     return sendSuccessResponse(res, 201, logger, {
         message: 'Created successfully.',
@@ -71,7 +71,6 @@ exports.getMy = (Model, populateItems = {}, logger, query = {}) => {
 
 exports.getAll = (Model, populateItems = {}, logger, query = {}) => {
     return catchAsync(async (req, res, next) => {
-        ;
         const features = new APIFeatures(Model.find(query), req.query)
             .filter()
             .limitFields()
@@ -111,7 +110,7 @@ exports.getOne = (Model, populateItems = '', logger, paramName = 'id', field = '
     }
     const doc = await query.populate(populateItems);
     if (!doc) return next(new AppError(`No record found with that ${field}.`, 404));
-    sendSuccessResponse(res, 200, logger, { doc });
+    sendSuccessResponse(res, 200, logger, { message: "Found Successfully", doc });
 });
 
 exports.updateOne = (Model, logger, options = {}) => catchAsync(async (req, res, next) => {

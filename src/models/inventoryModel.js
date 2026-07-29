@@ -17,9 +17,9 @@ const inventorySchema = new Schema({
     required: true,
     index: true,
   },
-  sector: {
+  blockOrFloor: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Sector',
+    ref: 'BlockOrFloor',
     required: true,
     index: true,
   },

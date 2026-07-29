@@ -25,11 +25,11 @@ const dealerValidationSchema = Joi.object({
     phoneNumber2: Joi.string().allow(null, '').optional().messages({
         'string.base': 'Secondary phone number must be a string.',
     }),
-    whatsappNumber: Joi.string().required().messages({
+    whatsAppNumber: Joi.string().required().messages({
         'any.required': 'Primary WhatsApp number is required.',
         'string.base': 'WhatsApp number must be a string.',
     }),
-    whatsappNumber2: Joi.string().allow(null, '').optional().messages({
+    whatsAppNumber2: Joi.string().allow(null, '').optional().messages({
         'string.base': 'Secondary WhatsApp number must be a string.',
     }),
     houseFlatNumber: Joi.string().allow(null, '').optional().messages({
