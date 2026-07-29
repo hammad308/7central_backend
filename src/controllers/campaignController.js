@@ -26,7 +26,16 @@ exports.createCampaign = catchAsync(async (req, res, next) => {
 exports.getCampaign = handlerFactory.getOne(Campaign, popObj, logger);
 
 exports.updateCampaign = catchAsync(async (req, res, next) => {
-    
+    const { error } = campaignValidationSchema.validate(req.body);
+    const isCampaignExist = await Campaign.findOne({
+        name: req.body.name,
+        $ne: { _id: req.params.id }
+    });
+    if (isCampaignExist) {
+        return next(new AppError('Campaign with these name exist before', 422));
+    }
+
+
 });
 
 exports.getAllCampaigns = catchAsync(async (req, res, next) => {
