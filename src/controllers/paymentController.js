@@ -405,7 +405,7 @@ const popItems = [
   {
     path: 'inventory', populate: [
       { path: 'project', select: 'title -_id' },
-      { path: 'sector', select: 'title -_id' },
+      { path: 'blockOrFloor', select: 'title -_id' },
       { path: 'currentSale', populate: { path: 'buyers', select: " name fatherName cnic phoneNumber email " } },
     ]
   },
