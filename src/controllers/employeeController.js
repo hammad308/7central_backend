@@ -68,7 +68,7 @@ exports.create = catchAsync(async (req, res, next) => {
   if (!workingShift) return next(new AppError('Working Shift not Found', 404));
 
   const userData = {
-    username: req.body.username,
+    name: req.body.name,
     email: req.body.email,
     password: req.body.phoneNumber, // default password (should be changed later)
     role: req.body.role,
@@ -177,8 +177,26 @@ exports.getDashboardAttendence = catchAsync(async (req, res, next) => {
   const query = {};
   if (req.query?.company) {
     query.company = req.query.company;
-    const company = await Company.findById(query.company);
+    const companyExists = await Company.findById(query.company);
+    if (!companyExists) return next(new AppError("Company Not Found", 404));
   }
+  const todayStart= new Date();
+  todayStart.setHours(0,0,0,0);
+  const todayEnd= new Date();
+  todayEnd.setHours(23,59,59,999);
+  const totalEmployees= await Employee.countDocuments({
+    ...query,
+    status:"active",
+    employmentStatus:{$ne:"terminated"}
+  });
+
+  const employeeIds= await Employee.find({
+    ...query,
+    status:'active'
+  }).distinct('_id');
+  
+  const employees = await employee.find({ ...query }).populate();
+
 
 
 })
