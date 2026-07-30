@@ -76,6 +76,10 @@ const CAMPAIGN_PERIOD = [
   'day', 'weekly', 'monthly'
 ];
 
+const LEAD_RESPONSE_TYPES = [
+  'interested', 'future_plan', 'follow_up', 'schedule_visit', 'contact_later', 'successfull', 'not_interested', 'irrelevant', 'not_contacted'
+];
+
 
 //Prefixes for auto increment IDs
 const PREFIX_PROJECT_AUTOINCREMENTID = `PT-${APP_SHORT_NAME}-`;
@@ -123,6 +127,7 @@ module.exports = {
   INSTALLMENT_TYPE,
   INSTALLMENT_STATUS,
   LEAD_SOURCE,
+  LEAD_RESPONSE_TYPES,
   OWNERSHIP_TYPES,
   PAYMENT_TYPES,
   CAMPAIGN_TYPES,

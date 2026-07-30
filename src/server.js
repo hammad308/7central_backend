@@ -79,6 +79,7 @@ app.use("/api/publicholiday", require("./routes/publicHolidayRoutes"));
 app.use("/api/campaign", require("./routes/campaignRoutes"));
 app.use("/api/lead", require("./routes/leadRoutes"));
 app.use("/api/dealer", require("./routes/dealerRoutes"));
+app.use("/api/lead-response", require("./routes/leadResponseRoutes"));
 
 
 app.use("/", loggingMiddlewares.respondNoResourceFound);

@@ -40,7 +40,7 @@ const campaignSchema = new mongoose.Schema({
     ],
     status: {
         type: String,
-        enum: ['active', 'ended'],
+        enum: ['active', 'ended','deleted'],
         default: 'active'
     },
     createdBy: {

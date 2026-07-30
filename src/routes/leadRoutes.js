@@ -5,7 +5,9 @@ const {
     getLead,
     getAllLeads,
     updateLead,
-    deleteLead
+    deleteLead,
+    getLeadTimeline,
+    getLeadReports
 } = require("../controllers/leadController");
 
 const { printRequest } = require("../logger")("LEAD_CONTROLLER");
@@ -16,9 +18,13 @@ router.route("/")
     .post(printRequest, protect, checkActionAccess(menus.lead, 'create'), createLead)
     .get(printRequest, protect, checkActionAccess(menus.lead, 'list'), getAllLeads)
 
+router.get("/:id/timeline", printRequest, protect, checkActionAccess(menus.lead, 'read'), getLeadTimeline);
+
 router.route("/:id")
     .get(printRequest, protect, checkActionAccess(menus.lead, 'read'), getLead)
     .put(printRequest, protect, checkActionAccess(menus.lead, 'update'), updateLead)
-    .delete(printRequest, protect, checkActionAccess(menus.lead, 'delete'), deleteLead)
+    .delete(printRequest, protect, checkActionAccess(menus.lead, 'delete'), deleteLead);
+
+router.get("/report", printRequest, protect, checkActionAccess(menus.lead, "list", getLeadReports))
 
 module.exports = router;

@@ -117,7 +117,7 @@ const dealerSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['active', 'inactive', 'resigned', 'terminated'],
+        enum: ['active', 'inactive', 'resigned', 'terminated','deleted'],
         default: 'active',
         index: true
     },

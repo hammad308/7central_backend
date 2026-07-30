@@ -12,6 +12,7 @@ const leadSchema = new mongoose.Schema({
     },
     phoneNumber: {
         type: String,
+        unique: true,
         required: true
     },
     whatsAppNumber: {
