@@ -29,7 +29,7 @@ const leadResponseSchema = new mongoose.Schema({
     },
     nextActionDate: {
         type: Date,
-        default: null;
+        default: null
     },
     result: {
         type: String,
