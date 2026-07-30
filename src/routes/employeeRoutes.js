@@ -8,6 +8,7 @@ const {
   profile,
   update,
   delete: deleteEmployee,
+  getDashboardAttendance
 } = require('../controllers/employeeController');
 const { printRequest } = require('../logger')('EMPLOYEE_CONTROLLER');
 const { protect, checkActionAccess } = require('../middlewares/protect');
@@ -38,5 +39,7 @@ router
   .get(printRequest, protect, checkActionAccess(menus.employees, 'read'), getOne)
   .put(printRequest, protect, checkActionAccess(menus.employees, 'update'), update)
   .delete(printRequest, protect, checkActionAccess(menus.employees, 'delete'), deleteEmployee);
+
+router.get("/dashboardAttendance", printRequest, protect, checkActionAccess(menus.employeeattendances, "list"), getDashboardAttendance);
 
 module.exports = router;

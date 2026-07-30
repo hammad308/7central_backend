@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const Employee = require('../models/employeeModel');
+const EmployeeAttendance = require("../models/employeeAttendanceModel");
 const User = require('../models/userModel');
 const Role = require('../models/roleModel');
 const Company = require('../models/companyModel');
@@ -19,6 +20,7 @@ const userValidationSchema = require('../validations/userValidations');
 const { getNextInSequence } = require('../utils/db');
 const { uploadBase64Image, uploadDataFile } = require('../utils/uploadFiles');
 const { PREFIX_EMPLOYEE_AUTOINCREMENTID } = require('../constants/app.constants'); // add this
+const employeeAttendanceModel = require('../models/employeeAttendanceModel');
 
 const popObj = [
   { path: 'company', select: 'name autoIncrementId longAutoIncrementId' },
@@ -38,15 +40,9 @@ exports.create = catchAsync(async (req, res, next) => {
   if (existingEmployee) {
     return next(new AppError('Email already in use by another employee.', 422));
   }
-  const existingUser = await User.findOne(
-    {
-      $or: [
-        { email: req.body.email },
-        { username: req.body.username }
-      ]
-    });
+  const existingUser = await User.findOne({ email: req.body.email },);
   if (existingUser) {
-    return next(new AppError('Email or Username already in use by a user account.', 422));
+    return next(new AppError('Email already in use by a user account.', 422));
   }
 
   // Validate company and department
@@ -173,32 +169,67 @@ exports.getAllOfCompany = catchAsync(async (req, res, next) => {
   handlerFactory.getAll(Employee, popObj, logger, query)(req, res, next);
 });
 
-exports.getDashboardAttendence = catchAsync(async (req, res, next) => {
+exports.getDashboardAttendance = catchAsync(async (req, res, next) => {
   const query = {};
   if (req.query?.company) {
     query.company = req.query.company;
     const companyExists = await Company.findById(query.company);
     if (!companyExists) return next(new AppError("Company Not Found", 404));
   }
-  const todayStart= new Date();
-  todayStart.setHours(0,0,0,0);
-  const todayEnd= new Date();
-  todayEnd.setHours(23,59,59,999);
-  const totalEmployees= await Employee.countDocuments({
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const todayEnd = new Date();
+  todayEnd.setHours(23, 59, 59, 999);
+  const totalEmployees = await Employee.countDocuments({
     ...query,
-    status:"active",
-    employmentStatus:{$ne:"terminated"}
+    status: "active",
+    employmentStatus: { $ne: "terminated" }
   });
 
-  const employeeIds= await Employee.find({
+  const employeeIds = await Employee.find({
     ...query,
-    status:'active'
+    status: 'active'
   }).distinct('_id');
-  
-  const employees = await employee.find({ ...query }).populate();
 
+  const todayAttendance = await EmployeeAttendance.aggregate([
+    {
+      $match: {
+        employee: { $in: employeeIds },
+        status: 'active',
+        checkInTime: { $gte: todayStart, $lte: todayEnd }
+      },
+      $group: {
+        _id: "$attendanceStatus", count: { $sum: 1 }
+      }
+    }
+  ]);
 
+  const attendanceMap = {
+    'On Time': 0,
+    "Off Day": 0,
+    "Half Day": 0,
+    "Late": 0
+  };
 
+  todayAttendance.forEach(item => {
+    attendanceMap[item._id] = item.count;
+  });
+
+  const totalPresent = attendanceMap["On Time"] + attendanceMap["Half Day"] + attendanceMap["Late"];
+  const totalLate = attendanceMap["Late"];
+  const totalAbsent = totalEmployees - totalPresent - attendanceMap["Off Day"];
+
+  sendSuccessResponse(res, 200, logger, {
+    message: "Dashboard Attendence Fetched Successfully",
+    doc: {
+      totalPresent,
+      totalLate,
+      totalAbsent,
+      totalOffDay: attendanceMap["Off Day"],
+      totalHalfDay: attendanceMap["Half Day"],
+      totalOnTime: attendanceMap["On Time"]
+    }
+  });
 })
 
 // Get single employee
