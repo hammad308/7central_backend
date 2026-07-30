@@ -178,7 +178,6 @@ exports.getDashboardAttendence = catchAsync(async (req, res, next) => {
   if (req.query?.company) {
     query.company = req.query.company;
     const company = await Company.findById(query.company);
-    const
   }
 
 
