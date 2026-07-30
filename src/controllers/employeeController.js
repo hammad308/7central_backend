@@ -177,9 +177,11 @@ exports.getDashboardAttendence = catchAsync(async (req, res, next) => {
   const query = {};
   if (req.query?.company) {
     query.company = req.query.company;
+    const company = await Company.findById(query.company);
+    const
   }
-  const company= await Company.findById(req.par)
-  
+
+
 })
 
 // Get single employee
