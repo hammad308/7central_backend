@@ -173,6 +173,15 @@ exports.getAllOfCompany = catchAsync(async (req, res, next) => {
   handlerFactory.getAll(Employee, popObj, logger, query)(req, res, next);
 });
 
+exports.getDashboardAttendence = catchAsync(async (req, res, next) => {
+  const query = {};
+  if (req.query?.company) {
+    query.company = req.query.company;
+  }
+  const company= await Company.findById(req.par)
+  
+})
+
 // Get single employee
 exports.getOne = handlerFactory.getOne(Employee, popObj, logger);
 

@@ -22,15 +22,6 @@ const degreeValidationSchema = Joi.object({
 });
 
 const employeeValidationSchema = Joi.object({
-  username: Joi.string()
-    .trim()
-    .pattern(/^[a-zA-Z0-9._-]{3,30}$/) // Allows alphanumeric, ".", "_", "-", 3-30 chars
-    .required()
-    .messages({
-      'any.required': 'Username is required.',
-      'string.empty': 'Username cannot be empty.',
-      'string.pattern.base': 'Username must be 3-30 characters long and can only contain letters, numbers, dots, underscores, or dashes.',
-    }),
   name: Joi.string().min(3).max(100).required().messages({
     'any.required': 'Full name is required',
     'string.min': 'Name must be at least 3 characters',
