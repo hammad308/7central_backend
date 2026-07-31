@@ -5,9 +5,14 @@ const {
   getAll,
   getOne,
   delete: deleteBonus,
+  myBonuses,
+  getMyBonus
 } = require('../controllers/employeeBonusController');
 const { printRequest } = require('../logger')('EMPLOYEE_BONUS_CONTROLLER');
 const { protect, checkActionAccess } = require('../middlewares/protect');
+
+router.get("/my", printRequest, protect, myBonuses);
+router.get("/my/:id", printRequest, protect, getMyBonus);
 
 router
   .route('/')

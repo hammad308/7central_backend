@@ -40,6 +40,8 @@ exports.create = catchAsync(async (req, res, next) => {
     employmentStatus: { $nin: ['terminated', 'resigned'] }
   });
   if (!employee) return next(new AppError('Employee not found, may be terminated, resigned or inactive', 404));
+  const isCamplaintExist = await EmployeeComplaint.findOne({ employee: employeeId, subject: req.body.subject, complaintStatus: "pending" });
+  if (isCamplaintExist) return next(new AppError("Pending Complaint for this subject exists already", 422));
 
   const complaint = await EmployeeComplaint.create({
     ...req.body,

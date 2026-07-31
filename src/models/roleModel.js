@@ -6,6 +6,7 @@ const RoleSchema = new mongoose.Schema(
     slug: { type: String, required: true, unique: true, lowercase: true, trim: true },
     permissions: [
       {
+        _id:false,
         menu: { type: String, required: true },
         actions: {
           read: { type: Boolean, default: false },

@@ -46,22 +46,6 @@ exports.isSuperAdmin = (req, res, next) => {
     return next(new AppError('You do not have permission to perform this action.'));
 };
 
-
-exports.checkAccess = (menu) => (req, res, next) => {
-    const user = req.user;
-    if (user?.isSuperAdmin) {
-        return next();
-    }
-    if (!user?.role) {
-        return next(new AppError('You do not have permission to perform this action.', 403));
-    }
-    const hasAccess = user.role.permissions.some((perm) => perm.menu === menu);
-    if (!hasAccess) {
-        return next(new AppError('You do not have permission to perform this action.', 403));
-    }
-    next();
-};
-
 exports.checkActionAccess = (menu, action = "read") => (req, res, next) => {
     const user = req.user;
     if (user?.isSuperAdmin) {

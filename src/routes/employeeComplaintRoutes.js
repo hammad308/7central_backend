@@ -27,25 +27,25 @@ router
 
 // Employee self‑service routes (my complaints)
 router.post(
-  '/my-complaints',
+  '/my/complaints',
   printRequest,
   protect,
-  create // same create function, it will use req.user.employee if no employee in body
+  create
 );
 router.get(
-  '/my-complaints',
+  '/my/complaints',
   printRequest,
   protect,
   myComplaints
 );
 router.get(
-  '/my-complaints/:id',
+  '/my/complaints/:id',
   printRequest,
   protect,
   getMyComplaint
 );
 router.put(
-  '/my-complaints/:id',
+  '/my/complaints/:id',
   printRequest,
   protect,
   updateMyComplaint

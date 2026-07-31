@@ -116,3 +116,49 @@ exports.delete = catchAsync(async (req, res, next) => {
     doc: increment,
   });
 });
+
+exports.myIncrements = catchAsync(async (req, res, next) => {
+  const employeeId = req.user.employee_id;
+  if (!employeeId) {
+    return next(new AppError("No Employee Profile Linked to you", 403));
+  }
+  const employee = await Employee.find({
+    _id: employeeId,
+    status: { $nin: ['deleted', 'inactive'] },
+    employmentStatus: { $nin: ['terminated', 'resigned'] }
+  });
+  if (!employee) return next(new AppError("No Employee Found", 404));
+  const increments = await EmployeeIncrement.find({
+    employee: employeeId,
+    status: "active"
+  }).populate(popObj).sort({ createdAt: -1 });
+  sendSuccessResponse(res, 200, logger, {
+    message: "Your Increments",
+    docs: increments
+  });
+});
+
+exports.getMyIncrement = catchAsync(async (req, res, next) => {
+  const employeeId = req.user.employee_id;
+  if (!employeeId) {
+    return next(new AppError("No Employee Profile Linked to you", 403));
+  }
+  const employee = await Employee.findOne({
+    _id: employeeId,
+    status: { $nin: ['deleted', 'inactive'] },
+    employmentStatus: { $nin: ['terminated', 'resigned'] }
+  });
+  if (!employee) return next(new AppError("No Employee Found", 404));
+  const increment = await EmployeeIncrement.findOne({
+    _id: req.params,
+    employee: employeeId,
+    status: "active"
+  }).populate(popObj);
+  if (!increment) {
+    return next(new AppError("Increment not found or not yours", 404));
+  }
+  sendSuccessResponse(res, 200, logger, {
+    message: "Increment Detail",
+    doc: increment
+  });
+})

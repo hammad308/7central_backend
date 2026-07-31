@@ -5,9 +5,14 @@ const {
   getAll,
   getOne,
   delete: deleteIncrement,
+  myIncrements,
+  getMyIncrement
 } = require('../controllers/employeeIncrementController');
 const { printRequest } = require('../logger')('EMPLOYEE_INCREMENT_CONTROLLER');
 const { protect, checkActionAccess } = require('../middlewares/protect');
+
+router.get("/my", printRequest, protect, myIncrements);
+router.get("/my/:id", printRequest, protect, getMyIncrement);
 
 router
   .route('/')

@@ -105,3 +105,35 @@ exports.delete = catchAsync(async (req, res, next) => {
     doc: bonus,
   });
 });
+
+exports.myBonuses = catchAsync(async (req, res, next) => {
+  const employeeId = req.user.employee_id;
+  if (!employeeId) {
+    return next(new AppError("No Employee Profile Linked To Your Account", 403));
+  }
+  const bonuses = await EmployeeBonus.find({
+    employees: { $in: [employeeId] },
+    status: "active"
+  })
+    .populate(popObj)
+    .sort({ createdAt: -1 });
+
+  sendSuccessResponse(res, logger, 200, {
+    message: 'Your Bunuses Fetched Successfully',
+    docs: bonuses
+  })
+});
+
+exports.getMyBonus = catchAsync(async (req, res, next) => {
+  const employeeId = req.user.employee_id;
+  const bonus = await EmployeeBonus.findOne({
+    _id: req.params.id,
+    employees: { $in: [employeeId] },
+    status: "active"
+  });
+  if (!bonus) return next(new AppError("Bonus Not found or not yours", 404));
+  sendSuccessResponse(res, 200, logger, {
+    message: "Bonus Details",
+    doc: bonus
+  });
+})

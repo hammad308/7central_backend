@@ -22,7 +22,7 @@ const employeeComplaintSchema = new Schema(
       required: [true, 'Complaint type is required'],
     },
     complaintStatus: {
-      // renamed to avoid conflict with record `status`
+      // renamed to avoid conflict with record 'status'
       type: String,
       enum: ['pending', 'solved', 'unsolvable'],
       default: 'pending',
@@ -33,7 +33,7 @@ const employeeComplaintSchema = new Schema(
     },
     description: {
       type: String,
-      default: null,
+      required:true,
     },
     createdBy: {
       type: Schema.Types.ObjectId,

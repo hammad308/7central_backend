@@ -6,7 +6,7 @@ const logger = require("../logger")("EMPLOYEE_NOTIFICATION_CONTROLLER");
 const AppError = require("../utils/appError");
 
 exports.getMyNotifications = catchAsync(async (req, res, next) => {
-    const employeeId = req.user.employee;
+    const employeeId = req.user.employee_id;
     if (!employeeId) return next(new AppError("No Employee Profile", 403));
 
     const employee = await Employee.findOne({

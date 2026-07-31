@@ -17,7 +17,10 @@ const employeeComplaintValidationSchema = Joi.object({
     .valid('pending', 'solved', 'unsolvable')
     .optional()
     .messages({ 'any.only': 'Invalid complaint status' }),
-  description: Joi.string().allow('', null).optional(),
+  description: Joi.string().required().messages({
+    'string.empty':'Description cannot be empty',
+    'any.required':'Description is Required'
+  }),
 });
 
 module.exports = employeeComplaintValidationSchema;
