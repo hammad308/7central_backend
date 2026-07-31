@@ -7,6 +7,7 @@ const IMG_DIR = {
     installment : 'installments' ,
     payment : 'payments' ,
     sale:'sales',
+    employee:'employees'
 }
 
 module.exports = IMG_DIR;

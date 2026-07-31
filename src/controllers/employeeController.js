@@ -36,13 +36,25 @@ exports.create = catchAsync(async (req, res, next) => {
   if (error) return next(new AppError(error.details[0].message, 400));
 
   // Check email uniqueness in Employee and User
-  const existingEmployee = await Employee.findOne({ email: req.body.email });
+  const existingEmployee = await Employee.findOne({
+    $or: [
+      { email: req.body.email },
+      { cnic: req.body.cnic },
+      { phoneNumber: req.body.phoneNumber },
+      { username: req.body.username }
+    ]
+  });
   if (existingEmployee) {
-    return next(new AppError('Email already in use by another employee.', 422));
+    return next(new AppError('Email, Username, Phone Number or CNIC already in use by another employee.', 422));
   }
-  const existingUser = await User.findOne({ email: req.body.email },);
+  const existingUser = await User.findOne({
+    $or: [
+      { email: req.body.email },
+      { username: req.body.username }
+    ]
+  });
   if (existingUser) {
-    return next(new AppError('Email already in use by a user account.', 422));
+    return next(new AppError('Email, Username or CNIC already in use by another User', 422));
   }
 
   // Validate company and department
@@ -59,24 +71,21 @@ exports.create = catchAsync(async (req, res, next) => {
   const role = await Role.findOne({ _id: req.body.role, slug: req.body.roleSlug });
   if (!role) return next(new AppError('Role not found.', 404));
 
-  // Validate workingHour
   const workingShift = await WorkingHour.findById(req.body.workingShift);
   if (!workingShift) return next(new AppError('Working Shift not Found', 404));
 
   const userData = {
-    name: req.body.name,
+    username: req.body.username,
     email: req.body.email,
-    password: req.body.phoneNumber, // default password (should be changed later)
-    role: req.body.role,
+    password: req.body.cnic,
+    role: req.body.role
   }
   const { error: userValidationError } = userValidationSchema.validate(userData);
   if (userValidationError) {
     return next(new AppError(userValidationError.details[0].message, 400));
   }
-  // Create associated user account
   const newUser = await User.create(userData);
 
-  // Generate custom employee ID
   const newIDNumber = await getNextInSequence('employees');
   const customId = `TP-${newIDNumber}`;
   const longAutoIncrementId = getLongAutoIncrementId(
@@ -84,24 +93,21 @@ exports.create = catchAsync(async (req, res, next) => {
     newIDNumber
   );
 
-  // Handle image uploads (converted base64 -> file)
   const imageFields = ['image', 'cnicFront', 'cnicBack', 'policeCertificate'];
-  const directory = 'employees';
 
   for (const field of imageFields) {
     if (req.body[field] && req.body[field].startsWith('data:image/')) {
       const base64String = req.body[field].split(',')[1];
-      const result = await uploadBase64Image(base64String, `/uploads/${directory}`);
-      req.body[field] = `${directory}/${result.fileName}`;
+      const result = await uploadBase64Image(base64String, `/uploads/${req.uploadDirectory}`);
+      req.body[field] = `${req.uploadDirectory}/${result.fileName}`;
     }
   }
 
-  // Handle resume (PDF)
   if (req.body.resume && req.body.resume.startsWith('data:application/pdf')) {
     const base64String = req.body.resume.split(',')[1];
     const fileName = `${Date.now()}-${Math.round(Math.random() * 1e9)}.pdf`;
-    await uploadDataFile(base64String, directory, fileName);
-    req.body.resume = `${directory}/${fileName}`;
+    await uploadDataFile(base64String, req.uploadDirectory, fileName);
+    req.body.resume = `${req.uploadDirectory}/${fileName}`;
   }
 
   const employeeData = {
@@ -188,7 +194,8 @@ exports.getDashboardAttendance = catchAsync(async (req, res, next) => {
 
   const employeeIds = await Employee.find({
     ...query,
-    status: 'active'
+    status: 'active',
+    employmentStatus: { $ne: "terminated" }
   }).distinct('_id');
 
   const todayAttendance = await EmployeeAttendance.aggregate([
@@ -197,7 +204,9 @@ exports.getDashboardAttendance = catchAsync(async (req, res, next) => {
         employee: { $in: employeeIds },
         status: 'active',
         checkInTime: { $gte: todayStart, $lte: todayEnd }
-      },
+      }
+    },
+    {
       $group: {
         _id: "$attendanceStatus", count: { $sum: 1 }
       }
@@ -230,7 +239,7 @@ exports.getDashboardAttendance = catchAsync(async (req, res, next) => {
       totalOnTime: attendanceMap["On Time"]
     }
   });
-})
+});
 
 // Get single employee
 exports.getOne = handlerFactory.getOne(Employee, popObj, logger);

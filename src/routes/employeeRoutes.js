@@ -12,10 +12,12 @@ const {
 } = require('../controllers/employeeController');
 const { printRequest } = require('../logger')('EMPLOYEE_CONTROLLER');
 const { protect, checkActionAccess } = require('../middlewares/protect');
+const setUploadDirectory = require("../middlewares/setUploadDirectory");
+const IMG_DIR= require("../constants/imgDir.constants")
 
 router
   .route('/')
-  .post(printRequest, protect, checkActionAccess(menus.employees, 'create'), create)
+  .post(printRequest, protect, checkActionAccess(menus.employees, 'create'),setUploadDirectory(IMG_DIR.employee), create)
   .get(printRequest, protect, checkActionAccess(menus.employees, 'list'), getAll);
 
 router.get(
@@ -40,6 +42,6 @@ router
   .put(printRequest, protect, checkActionAccess(menus.employees, 'update'), update)
   .delete(printRequest, protect, checkActionAccess(menus.employees, 'delete'), deleteEmployee);
 
-router.get("/dashboardAttendance", printRequest, protect, checkActionAccess(menus.employeeattendances, "list"), getDashboardAttendance);
+router.get("/attendance/dashboard", printRequest, protect, checkActionAccess(menus.employeeattendances, "list"), getDashboardAttendance);
 
 module.exports = router;

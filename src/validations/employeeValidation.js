@@ -22,22 +22,35 @@ const degreeValidationSchema = Joi.object({
 });
 
 const employeeValidationSchema = Joi.object({
-  name: Joi.string().min(3).max(100).required().messages({
-    'any.required': 'Full name is required',
+  username: Joi.string().trim().min(3).max(50).required().messages({
+    'string.empty':'Username cannot be empty',
+    'any.required': 'Username is required',
+    'string.min': 'Username must be at least 3 characters',
+    'string.max': 'Username Cannot exceed 50 characters'
+  }),
+  fullName: Joi.string().trim().min(3).max(50).required().messages({
+    'string.empty':'Name cannot be empty',
+    'any.required': 'Name is required',
     'string.min': 'Name must be at least 3 characters',
+    'string.max': 'Name Cannot exceed 50 characters'
   }),
-  fatherName: Joi.string().min(3).max(100).required().messages({
+  fatherName: Joi.string().trim().min(3).max(50).required().messages({
+    'string.empty':'Father Name cannot be empty',
     'any.required': 'Father name is required',
+    'string.min': 'Father Name must be at least 3 characters',
+    'string.max': 'Father Name Cannot exceed 50 characters'
   }),
-  email: Joi.string().email().lowercase().required().messages({
+  email: Joi.string().email().trim().lowercase().required().messages({
     'any.required': 'Email is required',
-    'string.email': 'Please provide a valid email',
+    'string.email': 'Please provide a valid email'
   }),
-  cnic: Joi.string().required().messages({
+  cnic: Joi.string().pattern(/^\d{13}$/).required().messages({
     'any.required': 'CNIC is required',
+    'string.pattern.base': 'Invalid CNIC format'
   }),
-  phoneNumber: Joi.string().required().messages({
-    'any.required': 'Phone number is required',
+  phoneNumber: Joi.string().pattern(/^03\d{9}$/).required().messages({
+    'string.pattern.base': 'Invalid Phone Number format',
+    'any.required': 'Phone number is required'
   }),
   image: Joi.string().dataUri().allow(null, '').optional().messages({
     'string.dataUri': 'Invalid image format. Must be a valid Data URI.',

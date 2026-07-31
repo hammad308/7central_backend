@@ -44,15 +44,27 @@ const employeeSchema = new Schema(
       unique: true,
       required: [true, 'Employee custom ID is required'],
     },
-    name: {
+    username: {
+      type: String,
+      required: [true, 'Username is required'],
+      trim: true,
+      unique: true,
+      minlength: [3, 'Employee Userame must contain at least 3 characters'],
+      maxlength: [50, 'Employee Username cannot exceed 50 characters']
+    },
+    fullName: {
       type: String,
       required: [true, 'Full name is required'],
       trim: true,
+      minlength: [3, 'Employee Name must contain at least 3 characters'],
+      maxlength: [50, 'Employee Name cannot exceed 50 characters']
     },
     fatherName: {
       type: String,
       required: [true, 'Father name is required'],
       trim: true,
+      minlength: [3, 'Employee Father Name must contain at least 3 characters'],
+      maxlength: [50, 'Employee Father Name cannot exceed 50 characters']
     },
     email: {
       type: String,
@@ -64,11 +76,12 @@ const employeeSchema = new Schema(
     cnic: {
       type: String,
       required: [true, 'CNIC is required'],
-      default: null,
+      unique: true
     },
     phoneNumber: {
       type: String,
       required: [true, 'Phone number is required'],
+      unique: true
     },
     image: {
       type: String,

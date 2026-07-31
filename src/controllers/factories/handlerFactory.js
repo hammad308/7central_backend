@@ -27,7 +27,7 @@ exports.createOne = (Model, docValidation = null, logger, options = {}) => catch
             const base64String = req.body.attachments[i].split(",")[1];
             if (!base64String) continue;
             const result = await uploadBase64Image(base64String, uploadDir);
-            const relativeAddress = `/${req.uploadDirectory}/${result.fileName}`;
+            const relativeAddress = `${req.uploadDirectory}/${result.fileName}`;
             attachments.push(relativeAddress);
         }
         req.body.attachments = attachments;
