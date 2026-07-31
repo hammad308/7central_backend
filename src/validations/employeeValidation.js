@@ -23,19 +23,19 @@ const degreeValidationSchema = Joi.object({
 
 const employeeValidationSchema = Joi.object({
   username: Joi.string().trim().min(3).max(50).required().messages({
-    'string.empty':'Username cannot be empty',
+    'string.empty': 'Username cannot be empty',
     'any.required': 'Username is required',
     'string.min': 'Username must be at least 3 characters',
     'string.max': 'Username Cannot exceed 50 characters'
   }),
   fullName: Joi.string().trim().min(3).max(50).required().messages({
-    'string.empty':'Name cannot be empty',
+    'string.empty': 'Name cannot be empty',
     'any.required': 'Name is required',
     'string.min': 'Name must be at least 3 characters',
     'string.max': 'Name Cannot exceed 50 characters'
   }),
   fatherName: Joi.string().trim().min(3).max(50).required().messages({
-    'string.empty':'Father Name cannot be empty',
+    'string.empty': 'Father Name cannot be empty',
     'any.required': 'Father name is required',
     'string.min': 'Father Name must be at least 3 characters',
     'string.max': 'Father Name Cannot exceed 50 characters'
@@ -122,6 +122,12 @@ const employeeValidationSchema = Joi.object({
   policeCertificate: Joi.string().dataUri().allow(null, '').optional().messages({
     'string.dataUri': 'Invalid image format for police certificate',
   }),
+  status: Joi.string().optional().valid('active', 'inactive', 'deleted').messages({
+    'any.only': 'Status should be one of the following: {#valids}'
+  }),
+  employmentStatus: Joi.string().optional().valid('active', 'on_leave', 'resigned', 'terminated').messages({
+    'any.only': 'Employment Status should be one of the following: {#valids}'
+  })
 });
 
 module.exports = employeeValidationSchema;

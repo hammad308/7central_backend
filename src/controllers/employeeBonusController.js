@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const { DateTime } = require('luxon');
 const EmployeeBonus = require('../models/employeeBonusModel');
+const EmployeeNotification = require('../models/employeeNotificationModel');
 const logger = require('../logger')('EMPLOYEE_BONUS_CONTROLLER');
 const handlerFactory = require('./factories/handlerFactory');
 const { sendSuccessResponse, getLongAutoIncrementId } = require('../utils/helpers');
@@ -25,10 +26,11 @@ exports.create = catchAsync(async (req, res, next) => {
   const employeeIds = req.body.employees;
   const validEmployees = await Employee.find({
     _id: { $in: employeeIds },
-    status: { $ne: 'deleted' },
+    status: { $nin: ['deleted', 'inactive'] },
+    employmentStatus: { $nin: ['terminated', 'resigned'] }
   });
   if (validEmployees.length !== employeeIds.length) {
-    return next(new AppError('One or more employees not found or inactive', 404));
+    return next(new AppError('One or more employees not found or inactive or terminated or resigned', 404));
   }
 
   const bonus = await EmployeeBonus.create({
@@ -46,13 +48,11 @@ exports.create = catchAsync(async (req, res, next) => {
   bonus.longAutoIncrementId = longAutoIncrementId;
   await bonus.save();
 
-  // Notifications – keep if your project uses them
   try {
-    const Notification = require('../models/notificationModel');
     const bonusMonth = DateTime.fromJSDate(bonus.bonusMonth);
     const bonusMonthText = `${bonusMonth.monthShort} ${bonusMonth.year}`;
     for (const empId of bonus.employees) {
-      await Notification.create({
+      await EmployeeNotification.create({
         employee: empId,
         redirectPage: 'my-bonuses',
         message: `You have been awarded a bonus of Rs. ${bonus.amount} for the month of ${bonusMonthText}.`,
@@ -86,13 +86,11 @@ exports.delete = catchAsync(async (req, res, next) => {
   bonus.status = 'deleted';
   await bonus.save();
 
-  // Optional notification for deletion
   try {
-    const Notification = require('../models/notificationModel');
     const bonusMonth = DateTime.fromJSDate(bonus.bonusMonth);
     const bonusMonthText = `${bonusMonth.monthShort} ${bonusMonth.year}`;
     for (const empId of bonus.employees) {
-      await Notification.create({
+      await EmployeeNotification.create({
         employee: empId,
         redirectPage: 'my-bonuses',
         message: `Bonus of Rs. ${bonus.amount} for ${bonusMonthText} has been revoked.`,

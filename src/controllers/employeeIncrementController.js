@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const Employee = require('../models/employeeModel');
 const EmployeeIncrement = require('../models/employeeIncrementModel');
-const Notification = require('../models/notificationModel');
+const EmployeeNotification = require('../models/employeeNotificationModel');
 const logger = require('../logger')('EMPLOYEE_INCREMENT_CONTROLLER');
 const handlerFactory = require('./factories/handlerFactory');
 const { sendSuccessResponse, getLongAutoIncrementId } = require('../utils/helpers');
@@ -24,7 +24,11 @@ exports.create = catchAsync(async (req, res, next) => {
   const employeeId = req.body.employee;
 
   // Verify employee exists and is active
-  const employee = await Employee.findOne({ _id: employeeId, status: { $ne: 'deleted' } });
+  const employee = await Employee.findOne({
+    _id: employeeId,
+    status: { $nin: ['deleted', 'inactive'] },
+    employmentStatus: { $nin: ['terminated', 'resigned'] }
+  });
   if (!employee) return next(new AppError('Employee not found', 404));
 
   // Create increment record
@@ -49,7 +53,7 @@ exports.create = catchAsync(async (req, res, next) => {
 
   // Notify employee
   try {
-    await Notification.create({
+    await EmployeeNotification.create({
       employee: employee._id,
       redirectPage: 'my-increments',
       message: `You have been awarded a salary increment of Rs. ${req.body.incrementAmount}.`,
@@ -84,7 +88,8 @@ exports.delete = catchAsync(async (req, res, next) => {
   // Reverse the salary increment
   const employee = await Employee.findOne({
     _id: increment.employee,
-    status: { $ne: 'deleted' },
+    status: { $nin: ['deleted', 'inactive'] },
+    employmentStatus: { $nin: ['terminated', 'resigned'] }
   });
   if (employee) {
     employee.salary = Math.max(0, (employee.salary || 0) - increment.incrementAmount); // avoid negative salary
@@ -97,7 +102,7 @@ exports.delete = catchAsync(async (req, res, next) => {
 
   // Notify employee
   try {
-    await Notification.create({
+    await EmployeeNotification.create({
       employee: increment.employee,
       redirectPage: 'my-increments',
       message: `Your salary increment of Rs. ${increment.incrementAmount} has been revoked.`,

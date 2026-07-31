@@ -3,7 +3,7 @@ const dayjs = require('dayjs');
 const Employee = require('../models/employeeModel');
 const EmployeeLeave = require('../models/employeeLeaveModel');
 const LeaveRule = require('../models/leaveRuleModel');
-const Notification = require('../models/notificationModel');
+const EmployeeNotification = require('../models/employeeNotificationModel');
 const logger = require('../logger')('EMPLOYEE_LEAVE_CONTROLLER');
 const handlerFactory = require('./factories/handlerFactory');
 const { sendSuccessResponse, getLongAutoIncrementId } = require('../utils/helpers');
@@ -29,16 +29,13 @@ const getLeaveRuleForEmployee = async (employeeId) => {
   return rule;
 };
 
-// Check leave quota and overlapping applications
 const validateLeaveRequest = async (employeeId, type, startDate, endDate, existingLeaveId = null) => {
-  // Basic date check
   if (dayjs(endDate).isBefore(dayjs(startDate))) {
     throw new AppError('End date cannot be before start date', 422);
   }
 
   const rule = await getLeaveRuleForEmployee(employeeId);
 
-  // Count already granted leaves in current year
   const yearStart = dayjs().startOf('year').toDate();
   const yearEnd = dayjs().endOf('year').toDate();
 
@@ -49,7 +46,6 @@ const validateLeaveRequest = async (employeeId, type, startDate, endDate, existi
     status: 'active',
   };
 
-  // If updating, exclude the current leave
   if (existingLeaveId) {
     grantedFilter._id = { $ne: existingLeaveId };
   }
@@ -93,9 +89,8 @@ const validateLeaveRequest = async (employeeId, type, startDate, endDate, existi
   return rule;
 };
 
-// ---------------------------------------------------------------
 // CREATE (admin or employee)
-// ---------------------------------------------------------------
+
 exports.create = catchAsync(async (req, res, next) => {
   const { error } = employeeLeaveValidationSchema.validate(req.body);
   if (error) return next(new AppError(error.details[0].message, 400));
@@ -103,14 +98,18 @@ exports.create = catchAsync(async (req, res, next) => {
   // Determine employee ID
   let employeeId = req.body.employee;
   if (!employeeId) {
-    if (!req.user.employee) {
+    if (!req.user.employee_id) {
       return next(new AppError('No employee profile linked to your account', 403));
     }
-    employeeId = req.user.employee;
+    employeeId = req.user.employee_id;
   }
 
   // Validate employee exists
-  const employee = await Employee.findOne({ _id: employeeId, status: { $ne: 'deleted' } });
+  const employee = await Employee.findOne({
+    _id: employeeId,
+    status: { $nin: ['deleted', 'inactive'] },
+    employmentStatus: { $nin: ['terminated', 'resigned'] }
+  });
   if (!employee) return next(new AppError('Employee not found', 404));
 
   // Validate leave request rules
@@ -139,40 +138,32 @@ exports.create = catchAsync(async (req, res, next) => {
   });
 });
 
-// ---------------------------------------------------------------
 // Admin LIST
-// ---------------------------------------------------------------
 exports.getAll = catchAsync(async (req, res, next) => {
   const query = { status: 'active' };
   handlerFactory.getAll(EmployeeLeave, popObj, logger, query)(req, res, next);
 });
 
-// ---------------------------------------------------------------
 // Employee: my leaves
-// ---------------------------------------------------------------
 exports.myLeaves = catchAsync(async (req, res, next) => {
-  if (!req.user.employee) {
+  if (!req.user.employee_id) {
     return next(new AppError('No employee profile linked', 403));
   }
-  const query = { employee: req.user.employee, status: 'active' };
+  const query = { employee: req.user.employee_id, status: 'active' };
   handlerFactory.getAll(EmployeeLeave, popObj, logger, query)(req, res, next);
 });
 
-// ---------------------------------------------------------------
 // READ single (admin)
-// ---------------------------------------------------------------
 exports.getOne = handlerFactory.getOne(EmployeeLeave, popObj, logger);
 
-// ---------------------------------------------------------------
 // READ my leave (employee)
-// ---------------------------------------------------------------
 exports.getMyLeave = catchAsync(async (req, res, next) => {
-  if (!req.user.employee) {
+  if (!req.user.employee_id) {
     return next(new AppError('No employee profile linked', 403));
   }
   const leave = await EmployeeLeave.findOne({
     _id: req.params.id,
-    employee: req.user.employee,
+    employee: req.user.employee_id,
     status: 'active',
   }).populate(popObj);
 
@@ -184,9 +175,7 @@ exports.getMyLeave = catchAsync(async (req, res, next) => {
   });
 });
 
-// ---------------------------------------------------------------
 // UPDATE (admin)
-// ---------------------------------------------------------------
 exports.update = catchAsync(async (req, res, next) => {
   const { error } = employeeLeaveValidationSchema.validate(req.body);
   if (error) return next(new AppError(error.details[0].message, 400));
@@ -196,7 +185,11 @@ exports.update = catchAsync(async (req, res, next) => {
 
   // If employee is changed, verify
   if (req.body.employee && req.body.employee !== leave.employee.toString()) {
-    const emp = await Employee.findOne({ _id: req.body.employee, status: { $ne: 'deleted' } });
+    const emp = await Employee.findOne({
+      _id: req.body.employee,
+      status: { $nin: ['deleted', 'inactive'] },
+      employmentStatus: { $nin: ['terminated', 'resigned'] }
+    });
     if (!emp) return next(new AppError('New employee not found', 404));
   }
 
@@ -222,7 +215,7 @@ exports.update = catchAsync(async (req, res, next) => {
   // Notify if status changed
   if (req.body.leaveStatus && req.body.leaveStatus !== oldStatus) {
     try {
-      await Notification.create({
+      await EmployeeNotification.create({
         employee: updated.employee._id,
         redirectPage: `my-leaves/edit/${updated._id}`,
         message: `Your leave application status has been changed to ${updated.leaveStatus}`,
@@ -238,11 +231,9 @@ exports.update = catchAsync(async (req, res, next) => {
   });
 });
 
-// ---------------------------------------------------------------
 // UPDATE my own leave (employee) – only if pending
-// ---------------------------------------------------------------
 exports.updateMyLeave = catchAsync(async (req, res, next) => {
-  if (!req.user.employee) {
+  if (!req.user.employee_id) {
     return next(new AppError('No employee profile linked', 403));
   }
 
@@ -251,7 +242,7 @@ exports.updateMyLeave = catchAsync(async (req, res, next) => {
 
   const leave = await EmployeeLeave.findOne({
     _id: req.params.id,
-    employee: req.user.employee,
+    employee: req.user.employee_id,
     status: 'active',
   });
   if (!leave) return next(new AppError('Leave application not found', 404));
@@ -264,7 +255,7 @@ exports.updateMyLeave = catchAsync(async (req, res, next) => {
   const type = req.body.type || leave.type;
   const startDate = req.body.startDate || leave.startDate;
   const endDate = req.body.endDate || leave.endDate;
-  await validateLeaveRequest(req.user.employee, type, startDate, endDate, leave._id);
+  await validateLeaveRequest(req.user.employee_id, type, startDate, endDate, leave._id);
 
   // Employees can only update certain fields
   const allowedFields = ['title', 'startDate', 'endDate', 'type', 'description'];
@@ -281,9 +272,7 @@ exports.updateMyLeave = catchAsync(async (req, res, next) => {
   });
 });
 
-// ---------------------------------------------------------------
 // DELETE (soft)
-// ---------------------------------------------------------------
 exports.delete = catchAsync(async (req, res, next) => {
   const leave = await EmployeeLeave.findOne({ _id: req.params.id, status: 'active' });
   if (!leave) return next(new AppError('Leave not found', 404));

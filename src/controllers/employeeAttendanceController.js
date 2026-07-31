@@ -20,8 +20,12 @@ const popObj = [
 
 // Helper to check if employee can mark attendance (no holiday, no leave, not Sunday, within shift)
 const canMarkAttendance = async (employeeId, now = DateTime.now().setZone('Asia/Karachi')) => {
-  const employee = await Employee.findOne({ _id: employeeId, status: { $ne: 'deleted' } }).populate('workingShift');
-  if (!employee) throw new AppError('Employee not found', 404);
+  const employee = await Employee.findOne({
+    _id: employeeId,
+    status: { $nin: ['deleted', 'inactive', 'on_leave'] },
+    employmentStatus: { $nin: ['terminated', 'resigned'] }
+  }).populate('workingShift');
+  if (!employee) throw new AppError('Employee not found, may be inactive, deleted, terminated, resigned or He is On Leave', 404);
 
   const shift = employee.workingShift;
   const shiftStart = DateTime.fromObject(
@@ -47,7 +51,7 @@ const canMarkAttendance = async (employeeId, now = DateTime.now().setZone('Asia/
     status: 'Granted',
     startDate: { $lte: nowDateOnly },
     endDate: { $gte: nowDateOnly },
-    status: { $ne: 'deleted' }, 
+    status: { $ne: 'deleted' },
   });
   if (leave) throw new AppError("You are on leave today", 403);
 
@@ -60,8 +64,8 @@ exports.create = catchAsync(async (req, res, next) => {
   if (error) return next(new AppError(error.details[0].message, 400));
 
   // Get employee from authenticated user
-  
-  const employeeId = req.user.employee_id; 
+
+  const employeeId = req.user.employee_id;
   if (!employeeId) return next(new AppError('No employee profile linked to this user', 403));
 
   const now = DateTime.now().setZone('Asia/Karachi');
@@ -82,7 +86,7 @@ exports.create = catchAsync(async (req, res, next) => {
   if (existing) return next(new AppError("Today's attendance already marked", 409));
 
   // Determine attendance status (late if after shift start + some grace)
-  const graceMinutes = 15; 
+  const graceMinutes = 15;
   const lateThreshold = shiftStart.plus({ minutes: graceMinutes });
   let attendanceStatus = 'On Time';
   if (userCheckInTime > lateThreshold) attendanceStatus = 'Late';
@@ -112,7 +116,7 @@ exports.create = catchAsync(async (req, res, next) => {
 
 // Check-out (employee self-service)
 exports.checkOut = catchAsync(async (req, res, next) => {
-  const employeeId = req.user.employee;
+  const employeeId = req.user.employee_id;
   if (!employeeId) return next(new AppError('No employee profile linked to this user', 403));
 
   const now = DateTime.now().setZone('Asia/Karachi');
@@ -155,7 +159,7 @@ exports.getAll = catchAsync(async (req, res, next) => {
 
 // Get my own attendances (employee)
 exports.myAttendances = catchAsync(async (req, res, next) => {
-  const employeeId = req.user.employee;
+  const employeeId = req.user.employee_id;
   if (!employeeId) return next(new AppError('No employee profile linked', 403));
 
   const query = { employee: employeeId, status: 'active' };
@@ -175,8 +179,12 @@ exports.update = catchAsync(async (req, res, next) => {
 
   // If employee is changed, verify it
   if (req.body.employee) {
-    const employee = await Employee.findOne({ _id: req.body.employee, status: { $ne: 'deleted' } });
-    if (!employee) return next(new AppError('Employee not found', 404));
+    const employee = await Employee.findOne({
+      _id: req.body.employee,
+      status: { $nin: ['deleted', 'inactive', 'on_leave'] },
+      employmentStatus: { $nin: ['terminated', 'resigned'] }
+    });
+    if (!employee) return next(new AppError('Employee not found, may be inactive, deleted, terminated, resigned or He is On Leave', 404));
   }
 
   const updated = await EmployeeAttendance.findByIdAndUpdate(
