@@ -161,7 +161,7 @@ const updateDealerValidationSchema = Joi.object({
     dhaRegistrationNumber: Joi.string().optional().messages({
         'string.base': 'DHA Registration Number must be String'
     }),
-    SevenCentralRegistrationNumber: Joi.string().optional().messages({
+    sevenCentralRegistrationNumber: Joi.string().optional().messages({
         'string.base': 'Seven Central Registration Number must be String'
     }),
     passportName: Joi.string().allow(null, '').optional().messages({

@@ -60,7 +60,12 @@ exports.getLead = catchAsync(async (req, res, next) => {
 });
 
 exports.getAllLeads = catchAsync(async (req, res, next) => {
+    const query = { assignedTo: { $ne: null } };
     handlerFactory.getAll(Lead, popObj, logger, query)(req, res, next);
+});
+
+exports.getAllLeadsAndProspects = catchAsync(async (req, res, next) => {
+    handlerFactory.getAll(Lead, popObj, logger, {})(req, res, next);
 });
 
 exports.updateLead = catchAsync(async (req, res, next) => {
@@ -103,9 +108,10 @@ exports.getLeadTimeline = catchAsync(async (req, res, next) => {
     const leadResponses = await LeadResponse.find({ leadId: lead._id })
         .populate({ path: "createdBy", select: "username image -_id" })
         .sort({ createdAt: -1 });
-    if (!leadResponses) {
-        sendSuccessResponse(res, 200, logger, {
-            message: "There is no response marked on this lead"
+    if (!leadResponses || leadResponses.length === 0) {
+        return sendSuccessResponse(res, 200, logger, {
+            message: "There is no response marked on this lead",
+            doc:[]
         });
     }
     sendSuccessResponse(res, 200, logger, {
@@ -122,31 +128,99 @@ exports.getLeadReports = catchAsync(async (req, res, next) => {
         .sort()
         .paginate();
     const leads = await features.query.populate(popObj);
-    const docsCount = await Campaign.countDocuments({ ...query, ...features.queryObj });
+    const docsCount = await Lead.countDocuments({ ...query, ...features.queryObj });
     const pages = Math.ceil(docsCount / features.pageSize);
-
-    const leadsWithActivity = await Promise.all(
-        leads.map(async (lead) => {
-            const lastResponse = await LeadResponse.findOne({ leadId: lead._id }).sort({ createdAt: -1 }).populate({ path: "createdBy", select: "username -_id" });
-            return (
-                {
-                    ...lead.toObject(),
-                    lastActivity: lastResponse ? lastResponse?.lastResponseType : null,
-                    currentStage: lastResponse ? lastResponse?.responseType : null,
-                    nextAction: lastResponse ? lastResponse?.nextAction : null,
-                    lastActivityDate: lastResponse ? lastResponse?.createdAt : null,
-                    result: lastResponse ? lastResponse?.result : null
-                }
-            )
-        })
-    )
+    const lastResponses = await LeadResponse.aggregate([
+        {
+            $match: { leadId: { $in: leads.map(l => l._id) } }
+        },
+        {
+            $sort: { createdAt: -1 }
+        },
+        {
+            $group: { _id: "$leadId", doc: { $first: "$$ROOT" } }
+        }
+    ]);
+    const responsemap = {};
+    lastResponses.forEach(item => {
+        responsemap[item._id.toString()] = item.doc;
+    });
+    const leadsWithActivity = leads.map(lead => {
+        const latestResponse = responsemap[lead._id.toString()]
+        return (
+            {
+                ...lead.toObject(),
+                lastActivity: latestResponse ? latestResponse?.lastResponseType : null,
+                currentStage: latestResponse ? latestResponse?.responseType : null,
+                nextAction: latestResponse ? latestResponse?.nextAction : null,
+                lastActivityDate: latestResponse ? latestResponse?.createdAt : null,
+                result: latestResponse ? latestResponse?.result : null
+            }
+        )
+    })
     sendSuccessResponse(res, 200, logger, {
         message: "Lead Reports fetched Successfully",
-        doc: leadsWithActivity
-    })
+        doc: leadsWithActivity,
+        pages,
+        docsCount,
+        page: features.page
+    });
+});
 
-})
 exports.deleteLead = catchAsync(async (req, res, next) => {
     handlerFactory.deleteOne(Lead, logger)(req, res, next);
 });
 
+exports.createProspect = catchAsync(async (req, res, next) => {
+    const { error } = createLeadValidationSchema.validate(req.body);
+    if (error) return next(new AppError(error.details[0].message, 422));
+
+    const isExist = await Lead.findOne({
+        $or: [
+            { email: req.body.email },
+            { phoneNumber: req.body.phoneNumber },
+            { whatsAppNumber: req.body.whatsAppNumber }
+        ]
+    });
+    if (isExist) return next(new AppError("Prospect with these credentials already exists", 422));
+
+    req.body.createdBy = req.user._id;
+    req.body.assignedTo = null; // force — prospect hamesha unassigned
+
+    const prospect = await Lead.create(req.body);
+    sendSuccessResponse(res, 201, logger, {
+        message: "Prospect Created Successfully",
+        doc: prospect
+    });
+});
+
+exports.getAllProspects = catchAsync(async (req, res, next) => {
+    // Sirf unassigned — prospects
+    handlerFactory.getAll(Lead, popObj, logger, { assignedTo: null })(req, res, next);
+});
+
+exports.assignProspect = catchAsync(async (req, res, next) => {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+        return next(new AppError("Invalid ID Format", 400));
+    }
+
+    const { assignedTo } = req.body;
+    if (!assignedTo) return next(new AppError("assignedTo is required", 422));
+    if (!mongoose.isValidObjectId(assignedTo)) {
+        return next(new AppError("Invalid User ID", 400));
+    }
+
+    const prospect = await Lead.findById(req.params.id);
+    if (!prospect) return next(new AppError("Prospect Not Found", 404));
+    if (prospect.assignedTo) {
+        return next(new AppError("Already assigned as a lead", 422));
+    }
+
+    prospect.assignedTo = assignedTo;
+    await prospect.save();
+
+    sendSuccessResponse(res, 200, logger, {
+        message: "Prospect assigned as Lead successfully",
+        doc: prospect
+    });
+});

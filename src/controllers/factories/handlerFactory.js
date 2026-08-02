@@ -41,7 +41,6 @@ exports.createOne = (Model, docValidation = null, logger, options = {}) => catch
     if (fieldToAddInRequestBody === "createdBy") {
         req.body[fieldToAddInRequestBody] = req.user._id;
     }
-    const doc = await Model.findOne({})
     const newDoc = await Model.create(req.body);
     return sendSuccessResponse(res, 201, logger, {
         message: 'Created successfully.',
@@ -166,19 +165,19 @@ exports.updateOne = (Model, logger, options = {}) => catchAsync(async (req, res,
 
 
 exports.deleteOne = (Model, logger) => catchAsync(async (req, res, next) => {
-    const user = await Model.findById(req.params.id);
-    if (!user) {
+    const doc = await Model.findById(req.params.id);
+    if (!doc) {
         return next(new AppError('Document not found.', 404))
     }
-    if (user?.isSuperAdmin) {
+    if (doc?.isSuperAdmin) {
         return next(new AppError('You can not update super admin user.', 400));
     }
-    const doc = await Model.findByIdAndUpdate(req.params.id, { status: 'deleted' }, {
+    const updatedDoc = await Model.findByIdAndUpdate(req.params.id, { status: 'deleted' }, {
         new: true
     });
     sendSuccessResponse(res, 200, logger, {
         message: 'Deleted successfully.',
-        doc
+        doc: updatedDoc
     });
 });
 

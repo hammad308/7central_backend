@@ -59,40 +59,40 @@ exports.getAllCampaigns = catchAsync(async (req, res, next) => {
     const docsCount = await Campaign.countDocuments({ ...query, ...features.queryObj });
     const pages = Math.ceil(docsCount / features.pageSize);
 
-    const getCamapignsWithProgress = await Promise.all(
-        campaigns.map(async (campaign) => {
-            const leads = await Lead.aggregate([
-                { $match: { campaignId: campaign._id } },
-                { $group: { _id: "$status", count: { $sum: 1 } } }
-            ]);
-            const progress = {
-                total: 0,
-                new: 0,
-                not_contacted: 0,
-                follow_up: 0,
-                visit_plan: 0,
-                dead: 0,
-                future_plan: 0,
-                successfull: 0
-            };
-            leads.forEach(item => {
-                progress[item._id] = item.count;
-                progress.total += item.count;
+    const progressData = await Lead.aggregate([
+        { $match: { campaignId: { $in: campaigns.map(c => c._id) } } },
+        { $group: { _id: { campaignId: "$campaignId", status: "$status" }, count: { $sum: 1 } } }
+    ]);
+    const campaignsWithProgress = campaigns.map(campaign => {
+        const progress = {
+            total: 0,
+            new: 0,
+            not_contacted: 0,
+            follow_up: 0,
+            visit_plan: 0,
+            dead: 0,
+            future_plan: 0,
+            successfull: 0
+        };
+        progressData.filter(item => item?._id?.campaignId?.toString() === campaign._id.toString())
+            .forEach(item => {
+                const statusName = item._id?.status;
+                if (statusName && statusName in progress) {
+                    progress[statusName] = item.count;
+                    progress.total += item.count;
+                }
             });
-            return ({ ...campaign.toObject(), progress });
-        })
-    )
+        return ({ ...campaign.toObject(), progress });
+    })
     sendSuccessResponse(res, 200, logger,
         {
             message: "All Campaigns Fetched Successfully",
-            doc: getCamapignsWithProgress,
+            docs: campaignsWithProgress,
             pages,
             docsCount,
             page: features.page
         }
     )
 });
-
-
 
 exports.deleteCampaign = handlerFactory.deleteOne(Campaign, logger);

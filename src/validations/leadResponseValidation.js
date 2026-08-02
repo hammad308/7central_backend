@@ -16,7 +16,7 @@ const leadResponseValidationSchema = Joi.object({
         'string.base': 'Note must be a string',
     }),
     nextAction: Joi.string().optional().messages({
-        'string.base': 'Note must be a string'
+        'string.base': 'Next Action must be a string'
     }),
     result: Joi.string().optional().messages({
         'string.base': 'Result must be a string'

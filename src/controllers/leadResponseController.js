@@ -29,10 +29,6 @@ exports.markResponse = catchAsync(async (req, res, next) => {
             lead.status = "follow_up";
             await lead.save();
             break;
-        case 'follow_up':
-            lead.status = "follow_up";
-            await lead.save();
-            break;
         case 'future_plan':
             lead.status = "future_plan";
             await lead.save();

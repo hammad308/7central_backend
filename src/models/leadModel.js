@@ -51,6 +51,12 @@ const leadSchema = new mongoose.Schema({
         enum: ['new', 'not_contacted', 'follow_up', 'visit_plan', 'future_plan', 'dead', 'successfull'],
         default: 'new'
     },
+    metaLeadgenId: {
+        type: String,
+        default: null,
+        unique: true,
+        sparse: true  
+    },
     assignedTo: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
@@ -59,7 +65,7 @@ const leadSchema = new mongoose.Schema({
     createdBy: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
-        required: true
+        required: false
     }
 }, {
     timestamps: true

@@ -65,7 +65,7 @@ const SALE_STATUS = [
 ];
 
 const LEAD_SOURCE = [
-  'campaign', 'google_ads_search', 'dealer', 'walking_customer'
+  'campaign', 'google_search', 'dealer', 'walking_customer', 'meta_ads'
 ];
 
 const CAMPAIGN_TYPES = [

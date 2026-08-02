@@ -47,7 +47,7 @@ exports.createDealer = catchAsync(async (req, res, next) => {
 
 exports.getDealer = catchAsync(async (req, res, next) => {
     if (!mongoose.isValidObjectId(req.params.id)) {
-        return next(new AppError("Invalid Dealer ID", 404));
+        return next(new AppError("Invalid Dealer ID", 400));
     }
     const dealer = await Dealer.findById(req.params.id);
     if (!dealer) {
