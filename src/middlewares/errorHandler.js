@@ -28,6 +28,7 @@ const handleExpiredTokenError = () => {
 };
 
 const sendErrorDev = (err, req, res) => {
+    console.log("ERROR IN DEV:", err);
     const response = {
         status: err.status || 'Error',
         success: false,
@@ -46,6 +47,13 @@ const sendErrorDev = (err, req, res) => {
 };
 
 const sendErrorProd = (err, req, res) => {
+    console.log("ERROR IN PROD:", err);
+    console.log({
+        message: err.message,
+        status: err.status,
+        statusCode: err.statusCode,
+        isOperational: err.isOperational
+    });
     if (err.isOperational) {
         const response = {
             status: err.status,
