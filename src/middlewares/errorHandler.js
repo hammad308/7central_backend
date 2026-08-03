@@ -28,7 +28,6 @@ const handleExpiredTokenError = () => {
 };
 
 const sendErrorDev = (err, req, res) => {
-    console.log("ERROR IN DEV:", err);
     const response = {
         status: err.status || 'Error',
         success: false,
@@ -67,10 +66,12 @@ const sendErrorProd = (err, req, res) => {
     }
 
     const response = {
-        status: err.status || 'Error',
+        status: err.status,
         success: false,
-        data: {
-            message: 'Internal Server Error'
+        message: err.message,
+        error: {
+            statusCode: err.statusCode,
+            status: err.status
         }
     };
     logger.error(JSON.stringify(response));
@@ -81,7 +82,7 @@ const errorHandler = (err, req, res, next) => {
     if (process.env.NODE_ENV === 'development') {
         sendErrorDev(err, req, res);
     } else if (process.env.NODE_ENV === 'production') {
-        let error = { ...err };
+        let error = err;
 
         if (error.name === 'CastError') error = castErrorHandlerDB(error);
         if (error.code === 11000) error = handleDuplicateFieldsErrorDB(error);
