@@ -124,9 +124,6 @@ const employeeValidationSchema = Joi.object({
   }),
   status: Joi.string().optional().valid('active', 'inactive', 'deleted').messages({
     'any.only': 'Status should be one of the following: {#valids}'
-  }),
-  employmentStatus: Joi.string().optional().valid('active', 'on_leave', 'resigned', 'terminated').messages({
-    'any.only': 'Employment Status should be one of the following: {#valids}'
   })
 });
 

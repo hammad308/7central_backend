@@ -4,7 +4,8 @@ const { LEAD_SOURCE } = require("../constants/app.constants")
 const objectId = Joi.string().pattern(/^[a-fA-F0-9]{24}$/);
 
 const createLeadValidationSchema = Joi.object({
-    name: Joi.string().required().messages({
+    name: Joi.string().required().min(3).messages({
+        'string.min': 'Name Field should contain at least 3 characters',
         'any.required': 'Name is required',
         'string.base': 'Name must be a string'
     }),
@@ -26,8 +27,9 @@ const createLeadValidationSchema = Joi.object({
         'string.base': 'Lead Source must be a string',
         'any.only': 'Lead Source must be one of the following: {#valids}'
     }),
-    note: Joi.string().optional().messages({
-        'string.base': 'Note must be String'
+    note: Joi.string().optional().min(3).messages({
+        'string.base': 'Note must be String',
+        'string.min': 'Note Field should contain at least 3 characters'
     }),
     heardVia: Joi.string().valid('google_search', 'meta_ads', 'words_of_mouth', 'referral', 'newspaper', 'bill_board').optional().messages({
         'string.base': 'Heard Via Field must be a string',

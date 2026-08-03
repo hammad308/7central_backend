@@ -13,18 +13,6 @@ const {
 const { printRequest } = require('../logger')('EMPLOYEE_LEAVE_CONTROLLER');
 const { protect, checkActionAccess } = require('../middlewares/protect');
 
-// Admin / HR routes
-router
-  .route('/')
-  .post(printRequest, protect, checkActionAccess(menus.employeeleaves, 'create'), create)
-  .get(printRequest, protect, checkActionAccess(menus.employeeleaves, 'list'), getAll);
-
-router
-  .route('/:id')
-  .get(printRequest, protect, checkActionAccess(menus.employeeleaves, 'read'), getOne)
-  .put(printRequest, protect, checkActionAccess(menus.employeeleaves, 'update'), update)
-  .delete(printRequest, protect, checkActionAccess(menus.employeeleaves, 'delete'), deleteLeave);
-
 // Employee self‑service routes
 router.post(
   '/my-leaves',
@@ -50,5 +38,17 @@ router.put(
   protect,
   updateMyLeave
 );
+
+// Admin / HR routes
+router
+  .route('/')
+  .post(printRequest, protect, checkActionAccess(menus.employeeleaves, 'create'), create)
+  .get(printRequest, protect, checkActionAccess(menus.employeeleaves, 'list'), getAll);
+
+router
+  .route('/:id')
+  .get(printRequest, protect, checkActionAccess(menus.employeeleaves, 'read'), getOne)
+  .put(printRequest, protect, checkActionAccess(menus.employeeleaves, 'update'), update)
+  .delete(printRequest, protect, checkActionAccess(menus.employeeleaves, 'delete'), deleteLeave);
 
 module.exports = router;

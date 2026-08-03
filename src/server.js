@@ -26,7 +26,8 @@ cron.schedule("0 9 * * *", async () => {
         console.error("Installment reminder cron failed:", error.message);
     }
 });
-const allowedOrigins = process.env.ALLOWED_ORIGINS;
+const allowedOrigins = JSON.parse(process.env.ALLOWED_ORIGINS);
+
 const corsOptions = {
     origin: function (origin, callback) {
         if (allowedOrigins.includes(origin) || !origin) {

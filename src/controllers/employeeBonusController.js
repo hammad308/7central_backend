@@ -118,7 +118,7 @@ exports.myBonuses = catchAsync(async (req, res, next) => {
     .populate(popObj)
     .sort({ createdAt: -1 });
 
-  sendSuccessResponse(res, logger, 200, {
+  sendSuccessResponse(res, 200, logger, {
     message: 'Your Bunuses Fetched Successfully',
     docs: bonuses
   })

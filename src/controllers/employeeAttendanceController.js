@@ -48,7 +48,7 @@ const canMarkAttendance = async (employeeId, now = DateTime.now().setZone('Asia/
 
   const leave = await EmployeeLeave.findOne({
     employee: employeeId,
-    status: 'Granted',
+    leaveStatus: 'Granted',
     startDate: { $lte: nowDateOnly },
     endDate: { $gte: nowDateOnly },
     status: { $ne: 'deleted' },

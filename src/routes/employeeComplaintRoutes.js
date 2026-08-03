@@ -13,18 +13,6 @@ const {
 const { printRequest } = require('../logger')('EMPLOYEE_COMPLAINT_CONTROLLER');
 const { protect, checkActionAccess } = require('../middlewares/protect');
 
-// Admin / HR routes
-router
-  .route('/')
-  .post(printRequest, protect, checkActionAccess(menus.employeecomplaints, 'create'), create)
-  .get(printRequest, protect, checkActionAccess(menus.employeecomplaints, 'list'), getAll);
-
-router
-  .route('/:id')
-  .get(printRequest, protect, checkActionAccess(menus.employeecomplaints, 'read'), getOne)
-  .put(printRequest, protect, checkActionAccess(menus.employeecomplaints, 'update'), update)
-  .delete(printRequest, protect, checkActionAccess(menus.employeecomplaints, 'delete'), deleteComplaint);
-
 // Employee self‑service routes (my complaints)
 router.post(
   '/my/complaints',
@@ -50,5 +38,17 @@ router.put(
   protect,
   updateMyComplaint
 );
+
+// Admin / HR routes
+router
+  .route('/')
+  .post(printRequest, protect, checkActionAccess(menus.employeecomplaints, 'create'), create)
+  .get(printRequest, protect, checkActionAccess(menus.employeecomplaints, 'list'), getAll);
+
+router
+  .route('/:id')
+  .get(printRequest, protect, checkActionAccess(menus.employeecomplaints, 'read'), getOne)
+  .put(printRequest, protect, checkActionAccess(menus.employeecomplaints, 'update'), update)
+  .delete(printRequest, protect, checkActionAccess(menus.employeecomplaints, 'delete'), deleteComplaint);
 
 module.exports = router;

@@ -151,7 +151,7 @@ exports.getAll = catchAsync(async (req, res, next) => {
   const employeeIds = employees.map(emp => emp._id);
   const leaves = await EmployeeLeave.find({
     employee: { $in: employeeIds },
-    status: 'Granted',
+    leaveStatus: 'Granted',
     status: { $ne: 'deleted' },
   }).populate('employee', 'name customId');
 
@@ -349,7 +349,7 @@ exports.delete = catchAsync(async (req, res, next) => {
   // Deactivate associated user account
   const user = await User.findOne({ email: employee.email });
   if (user) {
-    user.status = 'inactive';
+    user.status = 'deleted';
     await user.save();
   }
 
