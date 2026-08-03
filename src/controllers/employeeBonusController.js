@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const { DateTime } = require('luxon');
 const EmployeeBonus = require('../models/employeeBonusModel');
 const EmployeeNotification = require('../models/employeeNotificationModel');
+const Employee = require('../models/employeeModel');
 const logger = require('../logger')('EMPLOYEE_BONUS_CONTROLLER');
 const handlerFactory = require('./factories/handlerFactory');
 const { sendSuccessResponse, getLongAutoIncrementId } = require('../utils/helpers');
@@ -21,8 +22,7 @@ exports.create = catchAsync(async (req, res, next) => {
   const { error } = employeeBonusValidationSchema.validate(req.body);
   if (error) return next(new AppError(error.details[0].message, 400));
 
-  // Verify all employees exist and are active
-  const Employee = require('../models/employeeModel');
+  req.body.employees = [...new Set(req.body.employees.map(id => id.toString()))];
   const employeeIds = req.body.employees;
   const validEmployees = await Employee.find({
     _id: { $in: employeeIds },
@@ -31,6 +31,18 @@ exports.create = catchAsync(async (req, res, next) => {
   });
   if (validEmployees.length !== employeeIds.length) {
     return next(new AppError('One or more employees not found or inactive or terminated or resigned', 404));
+  }
+
+  const existingBonus = await EmployeeBonus.findOne({
+    bonusType: req.body.bonusType,
+    bonusMonth: {
+      $gte: new Date(new Date(req.body.bonusMonth).getFullYear(), new Date(req.body.bonusMonth).getMonth(), 1),
+      $lte: new Date(new Date(req.body.bonusMonth).getFullYear(), new Date(req.body.bonusMonth).getMonth() + 1, 0)
+    },
+    status: 'active'
+  });
+  if (existingBonus) {
+    return next(new AppError(`${req.body.bonusType} bonus for this month already exists`, 422));
   }
 
   const bonus = await EmployeeBonus.create({
@@ -51,16 +63,24 @@ exports.create = catchAsync(async (req, res, next) => {
   try {
     const bonusMonth = DateTime.fromJSDate(bonus.bonusMonth);
     const bonusMonthText = `${bonusMonth.monthShort} ${bonusMonth.year}`;
-    for (const empId of bonus.employees) {
-      await EmployeeNotification.create({
-        employee: empId,
-        redirectPage: 'my-bonuses',
-        message: `You have been awarded a bonus of Rs. ${bonus.amount} for the month of ${bonusMonthText}.`,
-      });
-    }
-  } catch (err) {
-    // Non‑critical, log but don't fail the request
-    logger.error('Failed to send bonus notifications', err);
+    const notificationResults = await Promise.allSettled(
+      bonus.employees.map(empId =>
+        EmployeeNotification.create({
+          employee: empId,
+          redirectPage: 'my-bonuses',
+          message: `You have been awarded a bonus of Rs. ${bonus.amount} for ${bonusMonthText}.`
+        })
+      )
+    );
+
+    // Failed ones log karo
+    notificationResults.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        logger.error(`Notification failed for employee ${bonus.employees[index]}:`, result.reason);
+      }
+    });
+  } catch (notificationError) {
+    logger.error('Critical failure in notification generation block:', notificationError);
   }
 
   sendSuccessResponse(res, 201, logger, {

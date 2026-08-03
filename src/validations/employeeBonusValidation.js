@@ -12,7 +12,7 @@ const employeeBonusValidationSchema = Joi.object({
     .messages({
       'any.required': 'At least one employee is required',
     }),
-  amount: Joi.number().integer().min(1).required().messages({
+  amount: Joi.number().min(1).required().messages({
     'any.required': 'Bonus amount is required',
     'number.min': 'Bonus amount must be at least 1',
   }),
@@ -23,9 +23,9 @@ const employeeBonusValidationSchema = Joi.object({
       'any.required': 'Bonus type is required',
       'any.only': 'Invalid bonus type',
     }),
-  bonusMonth: Joi.date().iso().required().messages({
-    'any.required': 'Bonus month is required',
-  }),
+  bonusMonth: Joi.date().iso().max('now').required().messages({
+    'date.max': 'Bonus month cannot be in the future'
+  })
 });
 
 module.exports = employeeBonusValidationSchema;
