@@ -1,6 +1,6 @@
 const admin = require("firebase-admin");
 
-const serviceAccount = require('../../boindo-firebase-adminsdk.json');
+const serviceAccount = require(process.env.FIREBASE_CREDENTIALS);
 
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
