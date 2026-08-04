@@ -30,6 +30,17 @@ exports.create = catchAsync(async (req, res, next) => {
     employmentStatus: { $nin: ['terminated', 'resigned'] }
   });
   if (!employee) return next(new AppError('Employee not found', 404));
+  const recentDuplicate = await EmployeeIncrement.findOne({
+    employee: employeeId,
+    incrementType: req.body.incrementType,
+    incrementAmount: req.body.incrementAmount,
+    status: 'active',
+    createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) }
+  });
+
+  if (recentDuplicate) {
+    return next(new AppError('Duplicate increment detected. Please try again later.', 409));
+  }
 
   // Create increment record
   const increment = await EmployeeIncrement.create({
@@ -48,8 +59,10 @@ exports.create = catchAsync(async (req, res, next) => {
   await increment.save();
 
   // Update employee salary
-  employee.salary = (employee.salary || 0) + req.body.incrementAmount;
-  await employee.save();
+  await Employee.updateOne(
+    { _id: employee._id },
+    { $inc: { salary: req.body.incrementAmount } }
+  );
 
   // Notify employee
   try {
@@ -75,7 +88,7 @@ exports.getAll = catchAsync(async (req, res, next) => {
 });
 
 // Get single increment
-exports.getOne = handlerFactory.getOne(EmployeeIncrement, popObj, logger);
+exports.getOne = handlerFactory.getOne(EmployeeIncrement, popObj, logger, 'id', '_id', { status: "active" });
 
 // Delete (soft) and reverse salary change
 exports.delete = catchAsync(async (req, res, next) => {
@@ -122,7 +135,7 @@ exports.myIncrements = catchAsync(async (req, res, next) => {
   if (!employeeId) {
     return next(new AppError("No Employee Profile Linked to you", 403));
   }
-  const employee = await Employee.find({
+  const employee = await Employee.findOne({
     _id: employeeId,
     status: { $nin: ['deleted', 'inactive'] },
     employmentStatus: { $nin: ['terminated', 'resigned'] }
@@ -150,7 +163,7 @@ exports.getMyIncrement = catchAsync(async (req, res, next) => {
   });
   if (!employee) return next(new AppError("No Employee Found", 404));
   const increment = await EmployeeIncrement.findOne({
-    _id: req.params,
+    _id: req.params.id,
     employee: employeeId,
     status: "active"
   }).populate(popObj);

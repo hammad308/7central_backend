@@ -15,7 +15,7 @@ const {
 } = require('../utils/helpers');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
-const {createEmployeeValidationSchema, updateEmployeeValidationSchema} = require('../validations/employeeValidation');
+const { createEmployeeValidationSchema, updateEmployeeValidationSchema } = require('../validations/employeeValidation');
 const userValidationSchema = require('../validations/userValidations');
 const { getNextInSequence } = require('../utils/db');
 const { uploadBase64Image, uploadDataFile } = require('../utils/uploadFiles');
@@ -32,7 +32,7 @@ const popObj = [
 
 // Create a new employee (also creates a User account)
 exports.create = catchAsync(async (req, res, next) => {
-  const { error } = employeeValidationSchema.validate(req.body);
+  const { error } = createEmployeeValidationSchema.validate(req.body);
   if (error) return next(new AppError(error.details[0].message, 400));
 
   // Check email uniqueness in Employee and User
@@ -242,7 +242,7 @@ exports.getDashboardAttendance = catchAsync(async (req, res, next) => {
 });
 
 // Get single employee
-exports.getOne = handlerFactory.getOne(Employee, popObj, logger);
+exports.getOne = handlerFactory.getOne(Employee, popObj, logger, { status: 'active' });
 
 // Get full profile (with more populated fields)
 exports.profile = catchAsync(async (req, res, next) => {
@@ -267,7 +267,7 @@ exports.profile = catchAsync(async (req, res, next) => {
 
 // Update employee
 exports.update = catchAsync(async (req, res, next) => {
-  const { error } = employeeValidationSchema.validate(req.body);
+  const { error } = updateEmployeeValidationSchema.validate(req.body);
   if (error) return next(new AppError(error.details[0].message, 400));
 
   const employee = await Employee.findOne({ _id: req.params.id, status: { $ne: 'deleted' } });
@@ -284,8 +284,8 @@ exports.update = catchAsync(async (req, res, next) => {
     if (!company) return next(new AppError('Company not found.', 404));
   }
   if (req.body.department) {
-    const department = await Department.findOne({ _id: req.body.department, status: { $ne: 'deleted' } });
-    if (!department) return next(new AppError('Department not found.', 404));
+    const department = await Department.findOne({ _id: req.body.department, company: employee.company, status: { $ne: 'deleted' } });
+    if (!department) return next(new AppError('Department not found or does not belong to employee company', 404));
     if (req.body.company && department.company.toString() !== req.body.company) {
       return next(new AppError('Department does not belong to the specified company.', 400));
     }
@@ -294,6 +294,10 @@ exports.update = catchAsync(async (req, res, next) => {
     const role = await Role.findOne({ slug: req.body.roleSlug });
     if (!role) return next(new AppError('Role not found.', 404));
     req.body.role = role._id;
+  }
+  if (req.body.workingShift) {
+    const workingShift = await WorkingHour.findById(req.body.workingShift);
+    if (!workingShift) return next(new AppError('Working Shift not Found', 404));
   }
 
   // Handle image uploads for updated fields
@@ -314,19 +318,36 @@ exports.update = catchAsync(async (req, res, next) => {
     req.body.resume = `${directory}/${fileName}`;
   }
 
-  // Update employment status and sync user account
-  if (req.body.employmentStatus) {
-    const user = await User.findOne({ email: employee.email });
-    if (user) {
+  const user = await User.findOne({ email: employee.email });
+  if (user) {
+    if (req.body.employmentStatus) {
       if (['terminated', 'resigned'].includes(req.body.employmentStatus)) {
-        user.status = 'inactive';
+        user.status = 'blocked';
       } else {
         user.status = 'active';
       }
+    }
+
+    if (req.body.role || req.body.roleSlug) {
       user.role = req.body.role || employee.role;
       user.roleSlug = req.body.roleSlug || employee.roleSlug;
-      await user.save();
     }
+
+    if (req.body.username) {
+      const usernameExists = await User.findOne({
+        username: req.body.username,
+        _id: { $ne: user._id }
+      });
+      if (usernameExists) {
+        return next(new AppError('Username already taken', 422));
+      }
+      user.username = req.body.username;
+    }
+    if (req.body.cnic) {
+      user.password = req.body.cnic;
+    }
+
+    await user.save();
   }
 
   const updatedEmployee = await Employee.findByIdAndUpdate(

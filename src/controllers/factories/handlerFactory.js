@@ -99,7 +99,6 @@ exports.getTotal = (Model, populateItems = '', logger) => catchAsync(async (req,
     });
 });
 
-// handlerFactory.getOne mein extra query param support karo
 exports.getOne = (Model, populateItems, logger, paramName = 'id', field = '_id', query = {}) =>
     catchAsync(async (req, res, next) => {
         const value = req.params[paramName];
