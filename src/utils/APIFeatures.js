@@ -56,6 +56,7 @@ class APIFeatures {
             const keywordQuery = {
                 $or: [
                     { name: { $regex: queryObj.keyword, $options: 'i' } },
+                    { fullName: { $regex: queryObj.keyword, $options: 'i' } },
                     { title: { $regex: queryObj.keyword, $options: 'i' } },
                     { username: { $regex: queryObj.keyword, $options: 'i' } },
                     { email: { $regex: queryObj.keyword, $options: 'i' } },

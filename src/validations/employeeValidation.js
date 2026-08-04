@@ -21,7 +21,7 @@ const degreeValidationSchema = Joi.object({
   }),
 });
 
-const employeeValidationSchema = Joi.object({
+const createEmployeeValidationSchema = Joi.object({
   username: Joi.string().trim().min(3).max(50).required().messages({
     'string.empty': 'Username cannot be empty',
     'any.required': 'Username is required',
@@ -127,4 +127,82 @@ const employeeValidationSchema = Joi.object({
   })
 });
 
-module.exports = employeeValidationSchema;
+const updateEmployeeValidationSchema = Joi.object({
+  username: Joi.string().trim().min(3).max(50).messages({
+    'string.empty': 'Username cannot be empty',
+    'string.min': 'Username must be at least 3 characters',
+    'string.max': 'Username Cannot exceed 50 characters'
+  }),
+  fullName: Joi.string().trim().min(3).max(50).messages({
+    'string.empty': 'Name cannot be empty',
+    'string.min': 'Name must be at least 3 characters',
+    'string.max': 'Name Cannot exceed 50 characters'
+  }),
+  fatherName: Joi.string().trim().min(3).max(50).messages({
+    'string.empty': 'Father Name cannot be empty',
+    'string.min': 'Father Name must be at least 3 characters',
+    'string.max': 'Father Name Cannot exceed 50 characters'
+  }),
+  email: Joi.string().email().trim().lowercase().messages({
+    'string.email': 'Please provide a valid email'
+  }),
+  cnic: Joi.string().pattern(/^\d{13}$/).messages({
+    'string.pattern.base': 'Invalid CNIC format'
+  }),
+  phoneNumber: Joi.string().pattern(/^03\d{9}$/).messages({
+    'string.pattern.base': 'Invalid Phone Number format'
+  }),
+  image: Joi.string().dataUri().allow(null, '').messages({
+    'string.dataUri': 'Invalid image format. Must be a valid Data URI.',
+  }),
+  employmentStatus: Joi.string()
+    .valid('active', 'on_leave', 'terminated', 'resigned')
+    .messages({}),
+  gender: Joi.string().valid('male', 'female', 'other').messages({}),
+  role: Joi.string()
+    .pattern(/^[0-9a-fA-F]{24}$/)
+    .messages({
+      'string.pattern.base': 'Invalid role ID',
+    }),
+  roleSlug: Joi.string().lowercase().messages({}),
+  workingShift: Joi.string()
+    .pattern(/^[0-9a-fA-F]{24}$/)
+    .messages({
+      'string.pattern.base': 'Invalid working shift ID',
+    }),
+  birthDate: Joi.date().iso().messages({}),
+  joiningDate: Joi.date().iso().messages({}),
+  referredBy: Joi.string().allow(null, '').optional(),
+  permanentAddress: Joi.string().messages({}),
+  mailingAddress: Joi.string().allow(null, '').optional(),
+  salary: Joi.number().min(0).messages({}),
+  company: Joi.string()
+    .pattern(/^[0-9a-fA-F]{24}$/)
+    .messages({
+      'string.pattern.base': 'Invalid company ID',
+    }),
+  department: Joi.string()
+    .pattern(/^[0-9a-fA-F]{24}$/)
+    .messages({
+      'string.pattern.base': 'Invalid department ID',
+    }),
+  degrees: Joi.array().items(degreeValidationSchema).min(1).messages({}),
+  cnicFront: Joi.string().dataUri().allow(null, '').messages({
+    'string.dataUri': 'Invalid image format for CNIC front',
+  }),
+  cnicBack: Joi.string().dataUri().allow(null, '').messages({
+    'string.dataUri': 'Invalid image format for CNIC back',
+  }),
+  resume: Joi.string().allow(null, '').optional(),
+  policeCertificate: Joi.string().dataUri().allow(null, '').messages({
+    'string.dataUri': 'Invalid image format for police certificate',
+  }),
+  status: Joi.string().valid('active', 'inactive', 'deleted').messages({
+    'any.only': 'Status should be one of the following: {#valids}'
+  })
+});
+
+module.exports = {
+  createEmployeeValidationSchema,
+  updateEmployeeValidationSchema
+};

@@ -15,7 +15,7 @@ const {
 } = require('../utils/helpers');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
-const employeeValidationSchema = require('../validations/employeeValidation');
+const {createEmployeeValidationSchema, updateEmployeeValidationSchema} = require('../validations/employeeValidation');
 const userValidationSchema = require('../validations/userValidations');
 const { getNextInSequence } = require('../utils/db');
 const { uploadBase64Image, uploadDataFile } = require('../utils/uploadFiles');

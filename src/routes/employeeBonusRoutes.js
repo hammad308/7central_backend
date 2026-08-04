@@ -24,5 +24,4 @@ router
   .get(printRequest, protect, checkActionAccess(menus.employeebonus, 'read'), getOne)
   .delete(printRequest, protect, checkActionAccess(menus.employeebonus, 'delete'), deleteBonus);
 
-
 module.exports = router;

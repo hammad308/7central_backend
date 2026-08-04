@@ -99,18 +99,18 @@ exports.getTotal = (Model, populateItems = '', logger) => catchAsync(async (req,
     });
 });
 
-exports.getOne = (Model, populateItems = '', logger, paramName = 'id', field = '_id') => catchAsync(async (req, res, next) => {
-    const value = req.params[paramName];
-    let query;
-    if (field === '_id') {
-        query = Model.findById(value);
-    } else {
-        query = Model.findOne({ [field]: value });
-    }
-    const doc = await query.populate(populateItems);
-    if (!doc) return next(new AppError(`No record found with that ${field}.`, 404));
-    sendSuccessResponse(res, 200, logger, { message: "Found Successfully", doc });
-});
+// handlerFactory.getOne mein extra query param support karo
+exports.getOne = (Model, populateItems, logger, paramName = 'id', field = '_id', query = {}) =>
+    catchAsync(async (req, res, next) => {
+        const value = req.params[paramName];
+        const doc = await Model.findOne({
+            [field]: value,
+            ...query  
+        }).populate(populateItems);
+
+        if (!doc) return next(new AppError(`No record found.`, 404));
+        sendSuccessResponse(res, 200, logger, { message: "Found Successfully", doc });
+    });
 
 exports.updateOne = (Model, logger, options = {}) => catchAsync(async (req, res, next) => {
     const { id } = req.params;

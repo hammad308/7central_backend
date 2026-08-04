@@ -9,13 +9,13 @@ const handlerFactory = require('./factories/handlerFactory');
 const { sendSuccessResponse, getLongAutoIncrementId } = require('../utils/helpers');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
-const employeeLeaveValidationSchema = require('../validations/employeeLeaveValidation');
+const { createEmployeeLeaveValidationSchema, updateEmployeeLeaveValidationSchema } = require('../validations/employeeLeaveValidation');
 const { getNextInSequence } = require('../utils/db');
 const { countDatesInARange, countLeaveDaysInARange } = require('../utils/dates');
 const { PREFIX_EMPLOYEE_LEAVE_AUTOINCREMENTID } = require('../constants/app.constants');
 
 const popObj = [
-  { path: 'employee', select: 'name customId department company role' },
+  { path: 'employee', select: 'fullName customId department company role' },
   { path: 'createdBy', select: 'username image email -_id' },
 ];
 
@@ -92,7 +92,7 @@ const validateLeaveRequest = async (employeeId, type, startDate, endDate, existi
 // CREATE (admin or employee)
 
 exports.create = catchAsync(async (req, res, next) => {
-  const { error } = employeeLeaveValidationSchema.validate(req.body);
+  const { error } = createEmployeeLeaveValidationSchema.validate(req.body);
   if (error) return next(new AppError(error.details[0].message, 400));
 
   // Determine employee ID
@@ -177,7 +177,7 @@ exports.getMyLeave = catchAsync(async (req, res, next) => {
 
 // UPDATE (admin)
 exports.update = catchAsync(async (req, res, next) => {
-  const { error } = employeeLeaveValidationSchema.validate(req.body);
+  const { error } = updateEmployeeLeaveValidationSchema.validate(req.body);
   if (error) return next(new AppError(error.details[0].message, 400));
 
   const leave = await EmployeeLeave.findOne({ _id: req.params.id, status: 'active' });
@@ -237,7 +237,7 @@ exports.updateMyLeave = catchAsync(async (req, res, next) => {
     return next(new AppError('No employee profile linked', 403));
   }
 
-  const { error } = employeeLeaveValidationSchema.validate(req.body);
+  const { error } = updateEmployeeLeaveValidationSchema.validate(req.body);
   if (error) return next(new AppError(error.details[0].message, 400));
 
   const leave = await EmployeeLeave.findOne({

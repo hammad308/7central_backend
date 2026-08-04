@@ -32,7 +32,7 @@ router.get(
   protect,
   myAttendances
 );
-
+// Admin (HR) Routes
 router
   .route('/')
   .get(printRequest, protect, checkActionAccess(menus.employeeattendances, 'list'), getAll)

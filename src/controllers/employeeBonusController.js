@@ -32,13 +32,27 @@ exports.create = catchAsync(async (req, res, next) => {
   if (validEmployees.length !== employeeIds.length) {
     return next(new AppError('One or more employees not found or inactive or terminated or resigned', 404));
   }
+  const bonusMonthDate = new Date(req.body.bonusMonth);
+
+  const startOfMonth = new Date(Date.UTC(
+    bonusMonthDate.getUTCFullYear(),
+    bonusMonthDate.getUTCMonth(),
+    1
+  ));
+  const endOfMonth = new Date(Date.UTC(
+    bonusMonthDate.getUTCFullYear(),
+    bonusMonthDate.getUTCMonth() + 1,
+    0,
+    23, 59, 59, 999
+  ));
 
   const existingBonus = await EmployeeBonus.findOne({
     bonusType: req.body.bonusType,
     bonusMonth: {
-      $gte: new Date(new Date(req.body.bonusMonth).getFullYear(), new Date(req.body.bonusMonth).getMonth(), 1),
-      $lte: new Date(new Date(req.body.bonusMonth).getFullYear(), new Date(req.body.bonusMonth).getMonth() + 1, 0)
+      $gte: startOfMonth,
+      $lte: endOfMonth
     },
+    employees: { $in: req.body.employees },
     status: 'active'
   });
   if (existingBonus) {
@@ -96,7 +110,8 @@ exports.getAll = catchAsync(async (req, res, next) => {
 });
 
 // Get a single bonus
-exports.getOne = handlerFactory.getOne(EmployeeBonus, popObj, logger);
+exports.getOne = handlerFactory.getOne(EmployeeBonus, popObj, logger, 'id', '_id', { status: 'active' });
+
 
 // Delete (soft)
 exports.delete = catchAsync(async (req, res, next) => {
