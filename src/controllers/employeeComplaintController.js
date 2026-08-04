@@ -12,7 +12,7 @@ const { getNextInSequence } = require('../utils/db');
 const { PREFIX_EMPLOYEE_COMPLAINT_AUTOINCREMENTID } = require('../constants/app.constants');
 
 const popObj = [
-  { path: 'employee', select: 'name customId department company' },
+  { path: 'employee', select: 'fullName customId department company' },
   { path: 'createdBy', select: 'username image email -_id' },
 ];
 

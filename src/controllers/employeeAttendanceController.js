@@ -9,12 +9,12 @@ const handlerFactory = require('./factories/handlerFactory');
 const { sendSuccessResponse, getLongAutoIncrementId } = require('../utils/helpers');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
-const employeeAttendanceValidationSchema = require('../validations/employeeAttendanceValidation');
+const { createEmployeeAttendanceValidationSchema, updateEmployeeAttendanceValidationSchema } = require('../validations/employeeAttendanceValidation');
 const { getNextInSequence } = require('../utils/db');
 const { PREFIX_EMPLOYEE_ATTENDANCE_AUTOINCREMENTID } = require('../constants/app.constants');
 
 const popObj = [
-  { path: 'employee', select: 'name customId department company' },
+  { path: 'employee', select: 'fullName customId department company' },
   { path: 'createdBy', select: 'username image email -_id' },
 ];
 
@@ -60,7 +60,7 @@ const canMarkAttendance = async (employeeId, now = DateTime.now().setZone('Asia/
 
 // Mark check-in (employee self-service)
 exports.create = catchAsync(async (req, res, next) => {
-  const { error } = employeeAttendanceValidationSchema.validate(req.body);
+  const { error } = createEmployeeAttendanceValidationSchema.validate(req.body);
   if (error) return next(new AppError(error.details[0].message, 400));
 
   // Get employee from authenticated user
@@ -134,6 +134,7 @@ exports.checkOut = catchAsync(async (req, res, next) => {
   // Validate checkOutTime
   const userCheckOutTime = DateTime.fromISO(req.body.checkOutTime);
   if (userCheckOutTime < shiftStart || userCheckOutTime > shiftEnd) {
+    console.log(userCheckOutTime);
     return next(new AppError('Invalid check-out time', 400));
   }
 
@@ -167,11 +168,11 @@ exports.myAttendances = catchAsync(async (req, res, next) => {
 });
 
 // Get single attendance record
-exports.getOne = handlerFactory.getOne(EmployeeAttendance, popObj, logger);
+exports.getOne = handlerFactory.getOne(EmployeeAttendance, popObj, logger, 'id', '_id', { status: "active" });
 
 // Admin update attendance (e.g., correct status)
 exports.update = catchAsync(async (req, res, next) => {
-  const { error } = employeeAttendanceValidationSchema.validate(req.body);
+  const { error } = updateEmployeeAttendanceValidationSchema.validate(req.body);
   if (error) return next(new AppError(error.details[0].message, 400));
 
   const attendance = await EmployeeAttendance.findOne({ _id: req.params.id, status: 'active' });

@@ -41,7 +41,7 @@ router.get("/attendance/dashboard", printRequest, protect, checkActionAccess(men
 router
   .route('/:id')
   .get(printRequest, protect, checkActionAccess(menus.employees, 'read'), getOne)
-  .put(printRequest, protect, checkActionAccess(menus.employees, 'update'), update)
+  .put(printRequest, protect, checkActionAccess(menus.employees, 'update'), setUploadDirectory(IMG_DIR.employee), update)
   .delete(printRequest, protect, checkActionAccess(menus.employees, 'delete'), deleteEmployee);
 
 

@@ -302,20 +302,19 @@ exports.update = catchAsync(async (req, res, next) => {
 
   // Handle image uploads for updated fields
   const imageFields = ['image', 'cnicFront', 'cnicBack', 'policeCertificate'];
-  const directory = 'employees';
   for (const field of imageFields) {
     if (req.body[field] && req.body[field].startsWith('data:image/')) {
       const base64String = req.body[field].split(',')[1];
-      const result = await uploadBase64Image(base64String, `/uploads/${directory}`);
-      req.body[field] = `${directory}/${result.fileName}`;
+      const result = await uploadBase64Image(base64String, `/uploads/${req.uploadDirectory}`);
+      req.body[field] = `${req.uploadDirectory}/${result.fileName}`;
     }
   }
 
   if (req.body.resume && req.body.resume.startsWith('data:application/pdf')) {
     const base64String = req.body.resume.split(',')[1];
     const fileName = `${Date.now()}-${Math.round(Math.random() * 1e9)}.pdf`;
-    await uploadDataFile(base64String, directory, fileName);
-    req.body.resume = `${directory}/${fileName}`;
+    await uploadDataFile(base64String, req.uploadDirectory, fileName);
+    req.body.resume = `${req.uploadDirectory}/${fileName}`;
   }
 
   const user = await User.findOne({ email: employee.email });

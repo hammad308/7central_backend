@@ -1,6 +1,6 @@
 const Joi = require('joi');
 
-const employeeAttendanceValidationSchema = Joi.object({
+const createEmployeeAttendanceValidationSchema = Joi.object({
   employee: Joi.string()
     .pattern(/^[0-9a-fA-F]{24}$/)
     .optional()
@@ -9,9 +9,31 @@ const employeeAttendanceValidationSchema = Joi.object({
       'string.pattern.base': 'Invalid employee ID',
     }),
   checkInTime: Joi.date().iso().required().messages({
-    'any.required': 'Check‑in time is required',
+    'date.base': 'Invalid check-in Time Format',
+    'any.required': 'Check‑in time is required'
   }),
-  checkOutTime: Joi.date().iso().optional().allow(null),
+  checkOutTime: Joi.date().iso().optional().messages({
+    'date.base': 'Invalid check-out Time Format'
+  }),
 });
 
-module.exports = employeeAttendanceValidationSchema;
+const updateEmployeeAttendanceValidationSchema = Joi.object({
+  employee: Joi.string()
+    .pattern(/^[0-9a-fA-F]{24}$/)
+    .optional()
+    .messages({
+      'any.required': 'Employee ID is required',
+      'string.pattern.base': 'Invalid employee ID',
+    }),
+  checkInTime: Joi.date().iso().optional().messages({
+    'date.base': 'Invalid check-in Time Format'
+  }),
+  checkOutTime: Joi.date().iso().optional().messages({
+    'date.base': 'Invalid check-out Time Format'
+  }),
+});
+
+module.exports = {
+  createEmployeeAttendanceValidationSchema,
+  updateEmployeeAttendanceValidationSchema
+};
