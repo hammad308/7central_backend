@@ -114,6 +114,85 @@ exports.create = catchAsync(async (req, res, next) => {
   });
 });
 
+exports.adminCreate = catchAsync(async (req, res, next) => {
+  if (!req.body.employee) {
+    return next(new AppError('Employee ID is required', 422));
+  }
+  if (!mongoose.isValidObjectId(req.body.employee)) {
+    return next(new AppError('Invalid Employee ID', 400));
+  }
+
+  const { error } = createEmployeeAttendanceValidationSchema.validate(req.body);
+  if (error) return next(new AppError(error.details[0].message, 400));
+
+  const employee = await Employee.findOne({
+    _id: req.body.employee,
+    status: { $nin: ['deleted', 'inactive'] },
+    employmentStatus: { $nin: ['terminated', 'resigned'] }
+  }).populate('workingShift');
+  if (!employee) return next(new AppError('Employee not found or inactive', 404));
+
+  const checkInTime = DateTime.fromISO(req.body.checkInTime).setZone('Asia/Karachi');
+
+  // Shift se calculate karo
+  const shift = employee.workingShift;
+  const shiftStart = DateTime.fromObject(
+    { hour: shift.shiftStart?.hour || 9, minute: shift.shiftStart?.minute || 0 },
+    { zone: 'Asia/Karachi' }
+  ).set({ year: checkInTime.year, month: checkInTime.month, day: checkInTime.day });
+
+  const shiftEnd = shiftStart.set({
+    hour: shift.shiftEnd?.hour || 18,
+    minute: shift.shiftEnd?.minute || 0
+  });
+
+  // Duplicate check
+  const dayStart = checkInTime.startOf('day').toJSDate();
+  const dayEnd = checkInTime.endOf('day').toJSDate();
+  const existing = await EmployeeAttendance.findOne({
+    employee: req.body.employee,
+    checkInTime: { $gte: dayStart, $lte: dayEnd },
+    status: 'active'
+  });
+  if (existing) return next(new AppError('Attendance already marked for this employee on this day', 409));
+
+  // Status calculate karo
+  const graceMinutes = 15;
+  const lateThreshold = shiftStart.plus({ minutes: graceMinutes });
+  let attendanceStatus = 'On Time';
+  if (checkInTime > lateThreshold) attendanceStatus = 'Late';
+
+  // checkOutTime hai to Half Day check karo
+  let checkOutTime = null;
+  if (req.body.checkOutTime) {
+    checkOutTime = DateTime.fromISO(req.body.checkOutTime).setZone('Asia/Karachi');
+    const halfShift = shiftStart.plus({
+      hours: shiftEnd.diff(shiftStart, 'hours').hours / 2
+    });
+    if (checkOutTime <= halfShift) {
+      attendanceStatus = 'Half Day';
+    }
+  }
+
+  const attendance = await EmployeeAttendance.create({
+    employee: req.body.employee,
+    checkInTime: checkInTime.toJSDate(),
+    checkOutTime: checkOutTime ? checkOutTime.toJSDate() : null,
+    attendanceStatus, // body se nahi, calculate hua
+    createdBy: req.user._id,
+  });
+
+  const newIDNumber = await getNextInSequence('employeeAttendances');
+  attendance.autoIncrementId = newIDNumber;
+  attendance.longAutoIncrementId = getLongAutoIncrementId(PREFIX_EMPLOYEE_ATTENDANCE_AUTOINCREMENTID, newIDNumber);
+  await attendance.save();
+
+  sendSuccessResponse(res, 201, logger, {
+    message: 'Attendance created successfully',
+    doc: attendance,
+  });
+});
+
 // Check-out (employee self-service)
 exports.checkOut = catchAsync(async (req, res, next) => {
   const employeeId = req.user.employee_id;
@@ -121,6 +200,14 @@ exports.checkOut = catchAsync(async (req, res, next) => {
 
   const now = DateTime.now().setZone('Asia/Karachi');
   const { employee, shiftStart, shiftEnd } = await canMarkAttendance(employeeId, now);
+
+  const checkedOut = await EmployeeAttendance.findOne({
+    employee: employeeId,
+    checkInTime: { $gte: shiftStart.toJSDate(), $lt: shiftEnd.toJSDate() },
+    checkOutTime: { $ne: null },
+    status: 'active',
+  });
+  if (checkedOut) return next(new AppError('Already marked check-out for today', 403));
 
   // Find today's attendance record (check‑in, no check‑out)
   const attendance = await EmployeeAttendance.findOne({
@@ -134,7 +221,6 @@ exports.checkOut = catchAsync(async (req, res, next) => {
   // Validate checkOutTime
   const userCheckOutTime = DateTime.fromISO(req.body.checkOutTime);
   if (userCheckOutTime < shiftStart || userCheckOutTime > shiftEnd) {
-    console.log(userCheckOutTime);
     return next(new AppError('Invalid check-out time', 400));
   }
 

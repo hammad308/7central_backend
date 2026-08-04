@@ -9,6 +9,7 @@ const {
   myComplaints,
   getMyComplaint,
   updateMyComplaint,
+  createMyComplaint
 } = require('../controllers/employeeComplaintController');
 const { printRequest } = require('../logger')('EMPLOYEE_COMPLAINT_CONTROLLER');
 const { protect, checkActionAccess } = require('../middlewares/protect');
@@ -18,7 +19,7 @@ router.post(
   '/my/complaints',
   printRequest,
   protect,
-  create
+  createMyComplaint
 );
 router.get(
   '/my/complaints',

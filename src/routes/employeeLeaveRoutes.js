@@ -9,6 +9,7 @@ const {
   update,
   updateMyLeave,
   delete: deleteLeave,
+  createMyLeave
 } = require('../controllers/employeeLeaveController');
 const { printRequest } = require('../logger')('EMPLOYEE_LEAVE_CONTROLLER');
 const { protect, checkActionAccess } = require('../middlewares/protect');
@@ -18,7 +19,7 @@ router.post(
   '/my-leaves',
   printRequest,
   protect,
-  create // same create, auto-assigns employee from token
+  createMyLeave
 );
 router.get(
   '/my-leaves',

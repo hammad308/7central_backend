@@ -8,6 +8,7 @@ const {
   getOne,
   update,
   delete: deleteAttendance,
+  adminCreate
 } = require('../controllers/employeeAttendanceController');
 const { printRequest } = require('../logger')('EMPLOYEE_ATTENDANCE_CONTROLLER');
 const { protect, checkActionAccess } = require('../middlewares/protect');
@@ -36,7 +37,7 @@ router.get(
 router
   .route('/')
   .get(printRequest, protect, checkActionAccess(menus.employeeattendances, 'list'), getAll)
-  .post(printRequest, protect, checkActionAccess(menus.employeeattendances, 'create'), create); 
+  .post(printRequest, protect, checkActionAccess(menus.employeeattendances, 'create'), adminCreate); 
 
 router
   .route('/:id')

@@ -7,7 +7,7 @@ const handlerFactory = require('./factories/handlerFactory');
 const { sendSuccessResponse, getLongAutoIncrementId } = require('../utils/helpers');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
-const employeeComplaintValidationSchema = require('../validations/employeeComplaintValidation');
+const { createEmployeeComplaintValidationSchema, updateEmployeeComplaintValidationSchema } = require('../validations/employeeComplaintValidation');
 const { getNextInSequence } = require('../utils/db');
 const { PREFIX_EMPLOYEE_COMPLAINT_AUTOINCREMENTID } = require('../constants/app.constants');
 
@@ -16,32 +16,75 @@ const popObj = [
   { path: 'createdBy', select: 'username image email -_id' },
 ];
 
-
-// Admin / HR creates a complaint on behalf of an employee
+// Admin create — employee ID required
 exports.create = catchAsync(async (req, res, next) => {
-  const { error } = employeeComplaintValidationSchema.validate(req.body);
+  const { error } = createEmployeeComplaintValidationSchema.validate(req.body);
   if (error) return next(new AppError(error.details[0].message, 400));
 
-  // Determine employee ID
-  let employeeId = req.body.employee;
-
-  // If not provided, use the authenticated user's linked employee (for employee self-service)
-  if (!employeeId) {
-    if (!req.user.employee_id) {
-      return next(new AppError('No employee profile linked to your account', 403));
-    }
-    employeeId = req.user.employee_id;
+  if (!req.body.employee) {
+    return next(new AppError('Employee ID is required', 422));
+  }
+  if (!mongoose.isValidObjectId(req.body.employee)) {
+    return next(new AppError('Invalid Employee ID', 400));
   }
 
-  // Verify employee exists
+  const employee = await Employee.findOne({
+    _id: req.body.employee,
+    status: { $nin: ['deleted', 'inactive'] },
+    employmentStatus: { $nin: ['terminated', 'resigned'] }
+  });
+  if (!employee) return next(new AppError('Employee not found', 404));
+
+  const isDuplicate = await EmployeeComplaint.findOne({
+    employee: req.body.employee,
+    subject: req.body.subject,
+    complaintStatus: 'pending'
+  });
+  if (isDuplicate) return next(new AppError('Pending complaint for this subject already exists', 422));
+
+  const complaint = await EmployeeComplaint.create({
+    ...req.body,
+    createdBy: req.user._id,
+  });
+
+  const newIDNumber = await getNextInSequence('employeeComplaints');
+  complaint.autoIncrementId = newIDNumber;
+  complaint.longAutoIncrementId = getLongAutoIncrementId(PREFIX_EMPLOYEE_COMPLAINT_AUTOINCREMENTID, newIDNumber);
+  await complaint.save();
+
+  sendSuccessResponse(res, 201, logger, {
+    message: 'Complaint created successfully',
+    doc: complaint,
+  });
+});
+
+// Employee self create — employee ID token
+exports.createMyComplaint = catchAsync(async (req, res, next) => {
+  if (!req.user.employee_id) {
+    return next(new AppError('No employee profile linked to your account', 403));
+  }
+
+  // employee field body mein allow mat karo
+  delete req.body.employee;
+
+  const { error } = createEmployeeComplaintValidationSchema.validate(req.body);
+  if (error) return next(new AppError(error.details[0].message, 400));
+
+  const employeeId = req.user.employee_id;
+
   const employee = await Employee.findOne({
     _id: employeeId,
     status: { $nin: ['deleted', 'inactive'] },
     employmentStatus: { $nin: ['terminated', 'resigned'] }
   });
-  if (!employee) return next(new AppError('Employee not found, may be terminated, resigned or inactive', 404));
-  const isCamplaintExist = await EmployeeComplaint.findOne({ employee: employeeId, subject: req.body.subject, complaintStatus: "pending" });
-  if (isCamplaintExist) return next(new AppError("Pending Complaint for this subject exists already", 422));
+  if (!employee) return next(new AppError('Employee not found', 404));
+
+  const isDuplicate = await EmployeeComplaint.findOne({
+    employee: employeeId,
+    subject: req.body.subject,
+    complaintStatus: 'pending'
+  });
+  if (isDuplicate) return next(new AppError('Pending complaint for this subject already exists', 422));
 
   const complaint = await EmployeeComplaint.create({
     ...req.body,
@@ -49,18 +92,13 @@ exports.create = catchAsync(async (req, res, next) => {
     createdBy: req.user._id,
   });
 
-  // Generate auto‑increment IDs
   const newIDNumber = await getNextInSequence('employeeComplaints');
-  const longAutoIncrementId = getLongAutoIncrementId(
-    PREFIX_EMPLOYEE_COMPLAINT_AUTOINCREMENTID,
-    newIDNumber
-  );
   complaint.autoIncrementId = newIDNumber;
-  complaint.longAutoIncrementId = longAutoIncrementId;
+  complaint.longAutoIncrementId = getLongAutoIncrementId(PREFIX_EMPLOYEE_COMPLAINT_AUTOINCREMENTID, newIDNumber);
   await complaint.save();
 
   sendSuccessResponse(res, 201, logger, {
-    message: 'Complaint created successfully',
+    message: 'Complaint submitted successfully',
     doc: complaint,
   });
 });
@@ -104,7 +142,7 @@ exports.getMyComplaint = catchAsync(async (req, res, next) => {
 
 // Admin update complaint (status, etc.)
 exports.update = catchAsync(async (req, res, next) => {
-  const { error } = employeeComplaintValidationSchema.validate(req.body);
+  const { error } = updateEmployeeComplaintValidationSchema.validate(req.body);
   if (error) return next(new AppError(error.details[0].message, 400));
 
   const complaint = await EmployeeComplaint.findOne({
@@ -156,7 +194,11 @@ exports.updateMyComplaint = catchAsync(async (req, res, next) => {
     return next(new AppError('No employee profile linked', 403));
   }
 
-  const { error } = employeeComplaintValidationSchema.validate(req.body);
+  if (req.body.employee) {
+    return next(new AppError("Employee ID is not allowed", 422));
+  }
+
+  const { error } = update.validate(req.body);
   if (error) return next(new AppError(error.details[0].message, 400));
 
   const complaint = await EmployeeComplaint.findOne({

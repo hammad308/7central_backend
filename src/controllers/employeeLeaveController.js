@@ -89,53 +89,83 @@ const validateLeaveRequest = async (employeeId, type, startDate, endDate, existi
   return rule;
 };
 
-// CREATE (admin or employee)
-
+// Admin create — employee ID required
 exports.create = catchAsync(async (req, res, next) => {
-  const { error } = createEmployeeLeaveValidationSchema.validate(req.body);
-  if (error) return next(new AppError(error.details[0].message, 400));
+    const { error } = createEmployeeLeaveValidationSchema.validate(req.body);
+    if (error) return next(new AppError(error.details[0].message, 400));
 
-  // Determine employee ID
-  let employeeId = req.body.employee;
-  if (!employeeId) {
-    if (!req.user.employee_id) {
-      return next(new AppError('No employee profile linked to your account', 403));
+    if (!req.body.employee) {
+        return next(new AppError('Employee ID is required', 422));
     }
-    employeeId = req.user.employee_id;
-  }
+    if (!mongoose.isValidObjectId(req.body.employee)) {
+        return next(new AppError('Invalid Employee ID', 400));
+    }
 
-  // Validate employee exists
-  const employee = await Employee.findOne({
-    _id: employeeId,
-    status: { $nin: ['deleted', 'inactive'] },
-    employmentStatus: { $nin: ['terminated', 'resigned'] }
-  });
-  if (!employee) return next(new AppError('Employee not found', 404));
+    const employee = await Employee.findOne({
+        _id: req.body.employee,
+        status: { $nin: ['deleted', 'inactive'] },
+        employmentStatus: { $nin: ['terminated', 'resigned'] }
+    });
+    if (!employee) return next(new AppError('Employee not found', 404));
 
-  // Validate leave request rules
-  await validateLeaveRequest(employeeId, req.body.type, req.body.startDate, req.body.endDate);
+    await validateLeaveRequest(req.body.employee, req.body.type, req.body.startDate, req.body.endDate);
 
-  const leave = await EmployeeLeave.create({
-    ...req.body,
-    employee: employeeId,
-    createdBy: req.user._id,
-    leaveStatus: req.body.leaveStatus || 'Pending',
-  });
+    const leave = await EmployeeLeave.create({
+        ...req.body,
+        createdBy: req.user._id,
+        leaveStatus: req.body.leaveStatus || 'Pending',
+    });
 
-  // Generate auto‑increment IDs
-  const newIDNumber = await getNextInSequence('employeeLeaves');
-  const longAutoIncrementId = getLongAutoIncrementId(
-    PREFIX_EMPLOYEE_LEAVE_AUTOINCREMENTID,
-    newIDNumber
-  );
-  leave.autoIncrementId = newIDNumber;
-  leave.longAutoIncrementId = longAutoIncrementId;
-  await leave.save();
+    const newIDNumber = await getNextInSequence('employeeLeaves');
+    leave.autoIncrementId = newIDNumber;
+    leave.longAutoIncrementId = getLongAutoIncrementId(PREFIX_EMPLOYEE_LEAVE_AUTOINCREMENTID, newIDNumber);
+    await leave.save();
 
-  sendSuccessResponse(res, 201, logger, {
-    message: 'Leave application submitted successfully',
-    doc: leave,
-  });
+    sendSuccessResponse(res, 201, logger, {
+        message: 'Leave application created successfully',
+        doc: leave,
+    });
+});
+
+// Employee self create — employee ID token 
+exports.createMyLeave = catchAsync(async (req, res, next) => {
+    if (!req.user.employee_id) {
+        return next(new AppError('No employee profile linked to your account', 403));
+    }
+
+    delete req.body.employee;
+    delete req.body.leaveStatus;
+
+    const { error } = createEmployeeLeaveValidationSchema.validate(req.body);
+    if (error) return next(new AppError(error.details[0].message, 400));
+
+    const employeeId = req.user.employee_id;
+
+    const employee = await Employee.findOne({
+        _id: employeeId,
+        status: { $nin: ['deleted', 'inactive'] },
+        employmentStatus: { $nin: ['terminated', 'resigned'] }
+    });
+    if (!employee) return next(new AppError('Employee not found', 404));
+
+    await validateLeaveRequest(employeeId, req.body.type, req.body.startDate, req.body.endDate);
+
+    const leave = await EmployeeLeave.create({
+        ...req.body,
+        employee: employeeId,
+        createdBy: req.user._id,
+        leaveStatus: 'Pending',
+    });
+
+    const newIDNumber = await getNextInSequence('employeeLeaves');
+    leave.autoIncrementId = newIDNumber;
+    leave.longAutoIncrementId = getLongAutoIncrementId(PREFIX_EMPLOYEE_LEAVE_AUTOINCREMENTID, newIDNumber);
+    await leave.save();
+
+    sendSuccessResponse(res, 201, logger, {
+        message: 'Leave application submitted successfully',
+        doc: leave,
+    });
 });
 
 // Admin LIST
