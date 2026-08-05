@@ -12,17 +12,20 @@ const customerSchema = new Schema({
   },
   name: {
     type: String,
-    required: true
+    required: true,
+    minlength: [3, 'Name must be at least 3 characters'],
+    maxlength: [50, 'Name must not exceed 50 characters']
   },
   fatherName: {
     type: String,
-    required: true
+    required: true,
+    minlength: [3, 'Father Name must be at least 3 characters'],
+    maxlength: [50, 'Father Name must not exceed 50 characters']
   },
   email: {
     type: String,
     trim: true,
     unique: true,
-    index: true,
     required: [true, 'Email is required.']
   },
   cnic: {
@@ -55,7 +58,7 @@ const customerSchema = new Schema({
   },
   address: {
     type: String,
-    default: null,
+    required: true
   },
   address2: {
     type: String,
@@ -70,7 +73,6 @@ const customerSchema = new Schema({
     default: null,
   },
   countryCode: {
-    // ISO 3166-1 alpha-2
     type: String,
     default: null,
   },
@@ -85,18 +87,15 @@ const customerSchema = new Schema({
   },
   nttNumber: {
     type: String,
-    required: function () {
-      return this.filerType === "filer";
-    }
+    required: false
   },
   image: {
     type: String,
     default: null,
   },
-  customerType: {
-    type: String,
-    enum: ['Original Buyer', 'Referal'],
-    default: 'Original Buyer'
+  isOriginalBuyer: {
+    type: Boolean,
+    required: true
   },
   profession: {
     type: String,

@@ -10,23 +10,26 @@ const BuyerRepresentativeSchema = new Schema({
     },
     name: {
         type: String,
-        required: true
+        required: true,
+        minlength: [3, 'Name must be at least 3 characters'],
+        maxlength: [50, 'Name must not exceed 50 characters']
     },
     fatherName: {
         type: String,
-        required: true
+        required: true,
+        minlength: [3, 'Father Name must be at least 3 characters'],
+        maxlength: [50, 'Father Name must not exceed 50 characters']
     },
     email: {
         type: String,
         trim: true,
         unique: true,
-        index: true,
         required: [true, 'Email is required.']
     },
     cnic: {
         type: String,
         required: false,
-        default:""
+        default: ""
     },
     phoneNumber: {
         type: String,
@@ -42,11 +45,7 @@ const BuyerRepresentativeSchema = new Schema({
     },
     address: {
         type: String,
-        default: null,
-    },
-    address2: {
-        type: String,
-        default: null,
+        required: true
     },
     city: {
         type: String,
@@ -71,5 +70,5 @@ const BuyerRepresentativeSchema = new Schema({
     }
 }, { timestamps: true });
 
-const BuyerRepresentative= mongoose.model('BuyerRepresentative', BuyerRepresentativeSchema);
+const BuyerRepresentative = mongoose.model('BuyerRepresentative', BuyerRepresentativeSchema);
 module.exports = BuyerRepresentative;

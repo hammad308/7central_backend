@@ -25,11 +25,15 @@ const partnerSchema = new Schema({
   },
   name: {
     type: String,
-    required: true
+    required: true,
+    minlength: [3, 'Name must be at least 3 characters'],
+    maxlength: [50, 'Name must not exceed 50 characters']
   },
   fatherName: {
     type: String,
-    required: true
+    required: true,
+    minlength: [3, 'Father Name must be at least 3 characters'],
+    maxlength: [50, 'Father Name must not exceed 50 characters']
   },
   cnic: {
     type: String,
@@ -37,12 +41,11 @@ const partnerSchema = new Schema({
   },
   relationType: {
     type: String,
-    enum: [...CUSTOMER_RELATION_TYPES],
-    default: null
+    enum: [...CUSTOMER_RELATION_TYPES]
   },
   email: {
     type: String,
-    required:true,
+    required: true,
     trim: true,
   },
   dateOfBirth: {
@@ -61,7 +64,7 @@ const partnerSchema = new Schema({
   },
   phoneNumber: {
     type: String,
-    required:true,
+    required: true,
   },
   houseFlatNumber: {
     type: String,
@@ -69,7 +72,7 @@ const partnerSchema = new Schema({
   },
   address: {
     type: String,
-    required:true,
+    required: true,
   },
   address2: {
     type: String,
@@ -84,16 +87,12 @@ const partnerSchema = new Schema({
     default: null,
   },
   countryCode: {
-    // ISO 3166-1 alpha-2
     type: String,
     default: null,
   },
   countryName: {
     type: String,
     default: null,
-  },
-  image: {
-    type: String
   },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,

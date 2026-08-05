@@ -6,7 +6,15 @@ const potentialBuyerSchema = new mongoose.Schema({
             {
                 name: {
                     type: String,
-                    required: true
+                    required: true,
+                    minlength: [3, 'Name must be at least 3 characters'],
+                    maxlength: [50, 'Name must not exceed 50 characters']
+                },
+                fatherName: {
+                    type: String,
+                    required: true,
+                    minlength: [3, 'Father Name must be at least 3 characters'],
+                    maxlength: [50, 'Father Name must not exceed 50 characters']
                 },
                 phoneNumber: {
                     type: String,
@@ -21,10 +29,6 @@ const potentialBuyerSchema = new mongoose.Schema({
                     default: null,
                 },
                 address: {
-                    type: String,
-                    default: null,
-                },
-                address2: {
                     type: String,
                     default: null,
                 },
@@ -50,13 +54,13 @@ const potentialBuyerSchema = new mongoose.Schema({
             validator: function (value) {
                 return value.length <= 3;
             },
-            message:"Potential Buyers cannot exceed 3 members"
+            message: "Potential Buyers cannot exceed 3 members"
         }
     },
-    customer:{
-        type:mongoose.Schema.Types.ObjectId,
-        ref:"Customer",
-        required:true
+    customer: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Customer",
+        required: true
     },
     createdBy: {
         type: mongoose.Schema.Types.ObjectId,

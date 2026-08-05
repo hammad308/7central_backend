@@ -158,9 +158,13 @@ exports.createBuyerRepresentaitve = catchAsync(async (req, res, next) => {
   if (!customer) {
     return next(new AppError("Customer not Found", 404));
   }
-  const existingBuyerRepresentative = await BuyerRepresentative.findOne({ email: req.body.email });
+  const duplicate = await BuyerRepresentative.findOne({ email: req.body.email });
+  if (duplicate) {
+    return next(new AppError("Email already Taken by another buyer Representative", 422));
+  }
+  const existingBuyerRepresentative = await BuyerRepresentative.findOne({ customer: req.body.customer });
   if (existingBuyerRepresentative) {
-    return next(new AppError("Email already Taken", 422));
+    return next(new AppError("This customer has already a Buyer Representor linked to it", 422));
   }
   const buyerRepresentative = await BuyerRepresentative.create(req.body);
 
@@ -180,12 +184,14 @@ exports.createPotentialBuyer = catchAsync(async (req, res, next) => {
     return next(new AppError("Customer Not Found", 404))
   }
   req.body.createdBy = req.user._id;
+  const existingPotentialBuyer = await PotentialBuyer.findOne({ customer: req.body.customer });
+  if (existingPotentialBuyer) return next(new AppError('This customer has already potential Buyers linked to it', 422));
   const potentialBuyer = await PotentialBuyer.create(req.body);
   sendSuccessResponse(res, 200, logger, {
     message: potentialBuyer.potentialCustomers.length > 1 ? "Potential Customers Created Successfully" : "Potential Customer Created Successfully",
     doc: potentialBuyer
   })
-})
+});
 
 exports.updateNextOfKin = catchAsync(async (req, res, next) => {
   const partnerId = req.params.id;
@@ -239,8 +245,9 @@ exports.getProgress = catchAsync(async (req, res, next) => {
   const { inventory } = req.query;
   let steps = {
     general: false,
+    buyerRepresentative: false,
     nextOfKin: false,
-    referalProgram: false,
+    potentialBuyers: false,
     notifications: false,
     documents: false,
     assignInventory: false,
@@ -263,9 +270,9 @@ exports.getProgress = catchAsync(async (req, res, next) => {
   if (partners.some(p => p.type === 'next_of_kin')) {
     steps.nextOfKin = true;
   }
-  const referal = await Referal.find({ customer: customerId });
-  if (referal) {
-    steps.referalProgram = true;
+  const buyerRepresentative = await BuyerRepresentative.find({ customer: customerId });
+  if (buyerRepresentative) {
+    steps.buyerRepresentative = true;
   }
   const notificationSetting = await NotificationSetting.findOne({ customer: customerId });
   if (notificationSetting) {

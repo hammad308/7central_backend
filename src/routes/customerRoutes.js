@@ -17,7 +17,6 @@ const {
     createBuyerRepresentaitve,
     createPotentialBuyer
 } = require("../controllers/customerController");
-const upload = require("../middlewares/multer");
 const { printRequest } = require("../logger")("CUSTOMER_CONTROLLER");
 const { protect, checkActionAccess } = require('../middlewares/protect');
 const setUploadDirectory = require("../middlewares/setUploadDirectory");
@@ -36,7 +35,6 @@ router.post('/joint-members', printRequest,
     protect,
     checkActionAccess(menus.customers, "create"),
     setUploadDirectory(IMG_DIR.customer),
-    upload.single('image'),
     createJoint);
 
 router.post('/next-of-kin', printRequest,

@@ -6,26 +6,37 @@ const potentialBuyerValidation = Joi.object({
     potentialCustomers: Joi.array()
         .items(
             Joi.object({
-                name: Joi.string().required().messages({
-                    'string.base': 'Name must be a string',
-                    'any.required': 'Name is required'
+                name: Joi.string().required().min(3).max(50).messages({
+                    'any.required': 'Name is required.',
+                    'string.base': 'Name must be a string.',
+                    'string.min': 'Name must be at least of 3 characters',
+                    'string.max': 'Name cannot exceed 50 characters'
                 }),
-                phoneNumber: Joi.string().required().messages({
-                    'string.base': 'Phone Number must be a string',
-                    'any.required': 'Phone Number is required'
+                fatherName: Joi.string().required().min(3).max(50).messages({
+                    'any.required': 'Father name is required.',
+                    'string.base': 'Father name must be a string.',
+                    'string.min': 'Father Name must be at least of 3 characters',
+                    'string.max': 'Father Name cannot exceed 50 characters'
                 }),
-                whatsAppNumber: Joi.string().required().messages({
-                    'string.base': 'WhatsApp Number must be a string',
-                    'any.required': 'WhatsApp Number is required'
+                cnic: Joi.string().pattern(/^\d{13}$/).optional().messages({
+                    'string.base': 'CNIC must be a string.',
+                    'string.pattern.base': 'Invalid CNIC Format'
+                }),
+                phoneNumber: Joi.string().pattern(/^03\d{9}$/).required().messages({
+                    'any.required': 'Primary phone number is required.',
+                    'string.base': 'Phone number must be a string.',
+                    'string.pattern.base': 'Invalid Phone Number Format'
+                }),
+                whatsappNumber: Joi.string().pattern(/^03\d{9}$/).required().messages({
+                    'any.required': 'Primary WhatsApp number is required.',
+                    'string.base': 'WhatsApp number must be a string.',
+                    'string.pattern.base': 'Invalid WhatsApp Number Format'
                 }),
                 houseFlatNumber: Joi.string().allow(null, '').optional().messages({
                     'string.base': 'House/Flat number must be a string.',
                 }),
-                address: Joi.string().optional().allow(null,'').messages({
+                address: Joi.string().optional().allow(null, '').messages({
                     'string.base': 'Address must be a string.',
-                }),
-                address2: Joi.string().allow(null, '').optional().messages({
-                    'string.base': 'Address 2 must be a string.',
                 }),
                 city: Joi.string().allow(null, '').optional().messages({
                     'string.base': 'City must be a string.',
@@ -57,4 +68,4 @@ const potentialBuyerValidation = Joi.object({
     })
 });
 
-module.exports= potentialBuyerValidation;
+module.exports = potentialBuyerValidation;
