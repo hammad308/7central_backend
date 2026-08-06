@@ -46,7 +46,7 @@ const customerValidationSchema = Joi.object({
     'string.base': 'Secondary WhatsApp number must be a string.',
     'string.pattern.base': 'Invalid Secondary WhatsApp Number Format'
   }),
-  gender:Joi.string().valid().optional().messages({
+  gender:Joi.string().valid('male','female','other').optional().messages({
     '*':'gender can be male, female or other and cannot be empty'
   }),
   houseFlatNumber: Joi.string().optional().messages({
