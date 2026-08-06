@@ -46,10 +46,12 @@ const customerValidationSchema = Joi.object({
     'string.base': 'Secondary WhatsApp number must be a string.',
     'string.pattern.base': 'Invalid Secondary WhatsApp Number Format'
   }),
+  gender:Joi.string().valid().optional().messages({
+    '*':'gender can be male, female or other and cannot be empty'
+  }),
   houseFlatNumber: Joi.string().optional().messages({
     'string.base': 'House/Flat number must be a string.',
     "string.empty": "House/Flat number is optional but cannot be empty"
-
   }),
   address: Joi.string().required().messages({
     'any.required': 'Address is required.',
@@ -95,13 +97,11 @@ const customerValidationSchema = Joi.object({
   }),
   filerType: Joi.string()
     .valid('filer', 'non_filer')
-    .label('Filer Type')
     .optional()
     .messages({
       'string.base': 'Filer Type must be a string',
-      'any.only': '{#label} must be one of the following: {#valids}',
+      'any.only': 'Filer Type must be one of the following: {#valids}',
       "string.empty": "Filer Type is optional but cannot be empty"
-
     }),
   nttNumber: Joi.string().optional().messages({
     'string.base': 'NTT Number must be a string',
@@ -158,19 +158,6 @@ const partnerValidationSchema = Joi.object({
     'string.base': 'Phone number must be a string.',
     'string.pattern.base': 'Invalid Phone Number Format'
   }),
-  phoneNumber2: Joi.string().pattern(/^03\d{9}$/).optional().messages({
-    'string.base': 'Secondary phone number must be a string.',
-    'string.pattern.base': 'Invalid Secondary Phone Number Format'
-  }),
-  whatsappNumber: Joi.string().pattern(/^03\d{9}$/).required().messages({
-    'any.required': 'Primary WhatsApp number is required.',
-    'string.base': 'WhatsApp number must be a string.',
-    'string.pattern.base': 'Invalid WhatsApp Number Format'
-  }),
-  whatsappNumber2: Joi.string().pattern(/^03\d{9}$/).optional().messages({
-    'string.base': 'Secondary WhatsApp number must be a string.',
-    'string.pattern.base': 'Invalid Secondary WhatsApp Number Format'
-  }),
   houseFlatNumber: Joi.string().optional().messages({
     'string.base': 'House/Flat number must be a string.',
     "string.empty": "House/Flat number is optional but cannot be empty"
@@ -206,7 +193,6 @@ const partnerValidationSchema = Joi.object({
     'date.less': 'Date of birth cannot be in future',
     "string.empty": "Date of Birth is optional but cannot be empty"
   })
-
 });
 
 const buyerRepresentativeValidationScehma = Joi.object({

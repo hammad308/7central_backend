@@ -40,6 +40,11 @@ const customerSchema = new Schema({
     type: String,
     required: true
   },
+  gender:{
+    type:String,
+    enum:['male','female','other'],
+    required:false
+  },
   phoneNumber2: {
     type: String,
     default: ""

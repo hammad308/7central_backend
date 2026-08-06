@@ -7,10 +7,12 @@ const inventoryValidationSchema = Joi.object({
   project: objectId.required().messages({
     'any.required': 'Project ID is required.',
     'string.base': 'Project ID must be a string.',
+    'string.pattern.base':'Invalid Project ID'
   }),
-  sector: objectId.required().messages({
-    'any.required': 'Sector ID is required.',
-    'string.base': 'Sector ID must be a string.',
+  blockOrFloor: objectId.required().messages({
+    'any.required': 'Block/Floor ID is required.',
+    'string.base': 'Block/Floor ID must be a string.',
+    'string.pattern.base':'Invalid Block/Floor ID'
   }), 
 
   type: Joi.string()

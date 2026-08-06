@@ -36,8 +36,27 @@ const planSchema = new mongoose.Schema({
     amount: Number,    // 4,000,000
     startDate: Date,
   },
+  monthlyBalloon: {
+    count: Number,
+    duration: String,
+    amount: Number,
+    startDate: Date,
+  },
   totalScheduled: Number,      // sum of all installment amounts
   currency: { type: String, default: 'PKR' },
+  isApproved: {
+    type: Boolean,
+    default: false
+  },
+  approvedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  approvedAt: {
+    type: Date,
+    default: null
+  }
 
 }, { timestamps: true });
 

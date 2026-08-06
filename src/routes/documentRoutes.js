@@ -12,10 +12,9 @@ const { printRequest } = require("../logger")("NOTIFICATION_SETTING_CONTROLLER")
 const upload = require("../middlewares/multer");
 
 router.get("/", printRequest, protect, checkActionAccess(menus.document, "list"), getAllDocuments);
-router.route("/create-customer-document")
-    .post(printRequest, protect, checkActionAccess(menus.document, "create"),
-        setUploadDirectory(IMG_DIR.document),
-        createCustomerDocument);
+router.post("/create-customer-document", printRequest, protect, checkActionAccess(menus.document, "create"),
+    setUploadDirectory(IMG_DIR.document),
+    createCustomerDocument);
 
 router.post("/create-inventory-document", printRequest, protect, checkActionAccess(menus.document, "create"),
     setUploadDirectory(IMG_DIR.document),

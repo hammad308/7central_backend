@@ -15,7 +15,7 @@ const saleValidationSchema = Joi.object({
     'string.base': 'Customers ID must be a string.',
     'string.pattern.base':'Invaid Customers ID'
   }),
-  onwershipType: Joi.string()
+  ownershipType: Joi.string()
     .valid(...OWNERSHIP_TYPES)
     .required().messages({
       "any.required": "OWNERSHIP type is required.",

@@ -31,7 +31,7 @@ const documentSchema = new Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "Partner",
     required: function () {
-      return this.assingType === "nextOfKin";
+      return this.assignType === "next_of_kin";
     },
     index: true
   },
@@ -40,7 +40,6 @@ const documentSchema = new Schema({
     enum: [...DOCUMENT_TYPES],
     required: [true, "Document type is required."],
     index: true,
-
   },
   assignType: {
     type: String,
@@ -55,7 +54,7 @@ const documentSchema = new Schema({
   attachments: {
     type: [
       {
-        fileUrl: { type: String, required: true }, // file path or URL
+        fileUrl: { type: String, required: true },
         tags: {
           type: [String],
           default: [],
@@ -69,7 +68,6 @@ const documentSchema = new Schema({
       message: "At least one attachment is required."
     }
   },
-  
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
@@ -77,14 +75,14 @@ const documentSchema = new Schema({
   },
   other: {
     type: String,
+    required: false,
     default: ""
   },
   status: {
     type: String,
-    enum: ['not_assigned', 'assigned', 'blocked', 'deleted'],
-    default: 'assigned',
+    enum: ['active', 'deleted'],
+    default: 'active',
     index: true
-
   },
 
 }, { timestamps: true });

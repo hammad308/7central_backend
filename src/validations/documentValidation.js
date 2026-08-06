@@ -6,8 +6,8 @@ const customerDocumentValidationSchema = Joi.object({
   customer: objectId.required().messages({
     'any.required': 'Customer ID is required.',
     'string.base': 'Customer ID must be a string.',
+    'string.pattern.base': 'Invalid Customer ID format.'
   }),
-
   type: Joi.string()
     .valid(...DOCUMENT_TYPES)
     .required()
@@ -16,24 +16,21 @@ const customerDocumentValidationSchema = Joi.object({
       "string.base": "Document type must be a string.",
       "any.only": `Document type must be one of: ${DOCUMENT_TYPES.join(", ")}.`,
     }),
-
-
   name: Joi.string().required().messages({
     "any.required": "Document name is required.",
     "string.base": "Document name must be a string.",
   }),
-  other: Joi.string().optional().allow(null, '').messages({
-    "string.base": "Other must be a string.",
+  other: Joi.string().optional().messages({
+    'string.base': 'Document others must be a string',
+    'string.empty': 'Other Field is optional but it cannot be empty'
   }),
-  // images:Joi.array().items(Joi.string()).optional(),
-  // image:Joi.string().optional(),
-
   attachments: Joi.array()
     .items(
       Joi.object({
-        fileUrl: Joi.string().required().messages({
+        fileUrl: Joi.string().dataUri().required().messages({
           "any.required": "File URL is required in each attachment.",
           "string.base": "File URL must be a string.",
+          'string.dataUri': 'File URL must be a valid Data URI.'
         }),
         tags: Joi.array().items(Joi.string()).default([]),
       })
@@ -42,21 +39,21 @@ const customerDocumentValidationSchema = Joi.object({
     .required()
     .messages({
       "array.min": "At least one attachment is required.",
-      "any.required": "Attachments are required.",
-    }),
-
-
+      "any.required": "Attachments are required."
+    })
 });
+
 const inventoryDocumentValidationSchema = Joi.object({
   customer: objectId.optional().allow(null, '').messages({
     'any.required': 'Customer ID is required.',
     'string.base': 'Customer ID must be a string.',
+    'string.pattern.base': 'Invalid Customer ID format.'
   }),
   inventory: objectId.required().messages({
     'any.required': 'Customer ID is required.',
     'string.base': 'Customer ID must be a string.',
+    'string.pattern.base': 'Invalid Inventory ID format.'
   }),
-
   type: Joi.string()
     .valid(...DOCUMENT_TYPES)
     .required()
@@ -65,21 +62,21 @@ const inventoryDocumentValidationSchema = Joi.object({
       "string.base": "Document type must be a string.",
       "any.only": `Document type must be one of: ${DOCUMENT_TYPES.join(", ")}.`,
     }),
-
-
   name: Joi.string().required().messages({
     "any.required": "Document name is required.",
     "string.base": "Document name must be a string.",
   }),
-  other: Joi.string().optional().allow(null, '').messages({
-    "string.base": "Other must be a string.",
+  other: Joi.string().optional().messages({
+    'string.base': 'Document others must be a string',
+    'string.empty': 'Other Field is optional but it cannot be empty'
   }),
   attachments: Joi.array()
     .items(
       Joi.object({
-        fileUrl: Joi.string().required().messages({
+        fileUrl: Joi.string().dataUri().required().messages({
           "any.required": "File URL is required in each attachment.",
           "string.base": "File URL must be a string.",
+          'string.dataUri': 'File URL must be a valid Data URI.'
         }),
         tags: Joi.array().items(Joi.string()).default([]),
       })
@@ -88,10 +85,8 @@ const inventoryDocumentValidationSchema = Joi.object({
     .required()
     .messages({
       "array.min": "At least one attachment is required.",
-      "any.required": "Attachments are required.",
-    }),
-
-
+      "any.required": "Attachments are required."
+    })
 });
 
 const createNextOfKinValidationSchema = Joi.object({
@@ -99,9 +94,10 @@ const createNextOfKinValidationSchema = Joi.object({
     "string.base": "Document Name must be a string",
     "any.required": "Document Name is rerquired"
   }),
-  partner: objectId.required().messages({
+  nextOfKin: objectId.required().messages({
     "any.required": "Partner ID is required",
-    "string.base": "Partner ID must be a string"
+    "string.base": "Partner ID must be a string",
+    'string.pattern.base': 'Invalid Partner ID format.'
   }),
   type: Joi.string().required()
     .valid(...DOCUMENT_TYPES)
@@ -114,21 +110,23 @@ const createNextOfKinValidationSchema = Joi.object({
   attachments: Joi.array()
     .items(
       Joi.object({
-        fileUrl: Joi.string().required().messages({
-          'any.only': 'File URL required in each attachment',
-          'string.base': 'File URL must be a string'
+        fileUrl: Joi.string().dataUri().required().messages({
+          "any.required": "File URL is required in each attachment.",
+          "string.base": "File URL must be a string.",
+          'string.dataUri': 'File URL must be a valid Data URI.'
         }),
-        tags: Joi.array().items(Joi.string()).default([])
+        tags: Joi.array().items(Joi.string()).default([]),
       })
     )
     .min(1)
     .required()
     .messages({
-      'array.min': 'At least one attachment is required',
-      'any.required': 'Attachments are required'
+      "array.min": "At least one attachment is required.",
+      "any.required": "Attachments are required."
     }),
-  others: Joi.string().optional().allow(null,'').messages({
-    'string.base':'Document others must be a string'
+  other: Joi.string().optional().messages({
+    'string.base': 'Document others must be a string',
+    'string.empty': 'Other Field is optional but it cannot be empty'
   })
 });
 
@@ -154,22 +152,25 @@ const updateDocumentValidationSchema = Joi.object({
   attachments: Joi.array()
     .items(
       Joi.object({
-        fileUrl: Joi.string().optional().messages({
+        fileUrl: Joi.string().dataUri().required().messages({
           "any.required": "File URL is required in each attachment.",
           "string.base": "File URL must be a string.",
+          'string.dataUri': 'File URL must be a valid Data URI.'
         }),
         tags: Joi.array().items(Joi.string()).default([]),
       })
     )
-    .optional().allow(null)
+    .min(1)
+    .required()
     .messages({
       "array.min": "At least one attachment is required.",
-      "any.required": "Attachments are required.",
+      "any.required": "Attachments are required."
     }),
 
-  other: Joi.string().optional().allow(null, '').messages({
-    "string.base": "Other must be a string.",
-  }),
+  other: Joi.string().optional().messages({
+    'string.base': 'Document others must be a string',
+    'string.empty': 'Other Field is optional but it cannot be empty'
+  })
 });
 
-module.exports = { customerDocumentValidationSchema, inventoryDocumentValidationSchema, updateDocumentValidationSchema , createNextOfKinValidationSchema};
+module.exports = { customerDocumentValidationSchema, inventoryDocumentValidationSchema, updateDocumentValidationSchema, createNextOfKinValidationSchema };

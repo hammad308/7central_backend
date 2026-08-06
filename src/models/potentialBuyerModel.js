@@ -20,7 +20,7 @@ const potentialBuyerSchema = new mongoose.Schema({
                     type: String,
                     required: true
                 },
-                whatsAppNumber: {
+                whatsappNumber: {
                     type: String,
                     required: true
                 },

@@ -13,7 +13,6 @@ const handlerFactory = require('./factories/handlerFactory');
 const { uploadBase64Image } = require('../utils/uploadFiles');
 
 exports.createCustomerDocument = catchAsync(async (req, res, next) => {
-
   const { error } = customerDocumentValidationSchema.validate(req.body);
   if (error) {
     return next(new AppError(error.details[0].message, 400));
@@ -28,6 +27,11 @@ exports.createCustomerDocument = catchAsync(async (req, res, next) => {
   }
 
   if (req.body.attachments && Array.isArray(req.body.attachments) && req.body.attachments.length > 0) {
+    const fileUrls = req.body.attachments.map(att => att.fileUrl);
+    const uniqueFileUrls = new Set(fileUrls);
+    if (fileUrls.length !== uniqueFileUrls.size) {
+      return next(new AppError("Duplicate attachments found in the request.", 400));
+    }
 
     const uploadDir = `/uploads/${req.uploadDirectory}`;
     const attachments = [];
@@ -42,15 +46,29 @@ exports.createCustomerDocument = catchAsync(async (req, res, next) => {
         const relativeAddress = `${req.uploadDirectory}/${result.fileName}`;
         attachments.push({
           fileUrl: relativeAddress,
-          tags: req.body.tags?.[i] || []     // default empty array
+          tags: req.body.attachments[i].tags || []
         });
       }
     }
 
     req.body.attachments = attachments;
+  }
 
-    delete req.body.images;
-    delete req.body.image;
+
+  // Check if document with same name and type exists
+  const existingDocument = await Document.findOne({
+    customer: req.body.customer,
+    type: req.body.type,
+    name: req.body.name,
+    assignType: "customer",
+    status: "active"
+  });
+
+  if (existingDocument) {
+    return next(new AppError(
+      `A document with this name and type already exists.`,
+      400
+    ));
   }
 
   const document = await Document.create(req.body);
@@ -70,6 +88,7 @@ exports.createCustomerDocument = catchAsync(async (req, res, next) => {
     doc: document,
   });
 });
+
 exports.updateCustomerDocument = catchAsync(async (req, res, next) => {
   const docId = req.params.id;
 
@@ -125,9 +144,6 @@ exports.updateCustomerDocument = catchAsync(async (req, res, next) => {
     }
 
     req.body.attachments = attachments;
-
-    delete req.body.images;
-    delete req.body.image;
   }
 
   const document = await Document.findOneAndUpdate(
@@ -152,12 +168,17 @@ exports.createNextOfKinDocument = catchAsync(async (req, res, next) => {
     return next(new AppError(error.details[0].message, 400));
   }
   req.body.createdBy = req.user._id;
-  req.body.assingType = "nextOfKin";
-  const partner = await Partner.findById(req.body.partner);
+  req.body.assignType = "next_of_kin";
+  const partner = await Partner.findById(req.body.nextOfKin);
   if (!partner) {
-    return next(new AppError("Partner not Found", 404));
+    return next(new AppError("Next Of Kin not Found", 404));
   }
   if (req.body.attachments && Array.isArray(req.body.attachments) && req.body.attachments.length > 0) {
+    const fileUrls = req.body.attachments.map(att => att.fileUrl);
+    const uniqueFileUrls = new Set(fileUrls);
+    if (fileUrls.length !== uniqueFileUrls.size) {
+      return next(new AppError("Duplicate attachments found in the request.", 400));
+    }
     const uploadDir = `uploads/${req.uploadDirectory}`;
     let attachments = [];
     for (let i = 0; i < req.body.attachments.length; i++) {
@@ -171,15 +192,28 @@ exports.createNextOfKinDocument = catchAsync(async (req, res, next) => {
         attachments.push(
           {
             fileUrl: relativeAddress,
-            tags: req.body.tags?.[i] || []
+            tags: req.body.attachments[i].tags || []
           }
         )
       }
     }
     req.body.attachments = attachments;
-    delete req.body.images;
-    delete req.body.image;
   }
+
+  const existingNextOfKinDoc = await Document.findOne({
+    nextOfKin: req.body.nextOfKin,
+    type: req.body.type,
+    assignType: "next_of_kin",
+    status: 'active'
+  });
+
+  if (existingNextOfKinDoc) {
+    return next(new AppError(
+      `A document of type "${req.body.type}" already exists for this Next of Kin.`,
+      400
+    ));
+  }
+
   const document = await Document.create(req.body);
   const newIDNumber = await getNextInSequence('documents');
   const longAutoIncrementId = getLongAutoIncrementId(
@@ -194,7 +228,8 @@ exports.createNextOfKinDocument = catchAsync(async (req, res, next) => {
     message: "Next Of Kin Documents Uploaded Successfully",
     doc: document
   })
-})
+});
+
 exports.createInventoryDocument = catchAsync(async (req, res, next) => {
   const { error } = inventoryDocumentValidationSchema.validate(req.body);
   if (error) {
@@ -207,6 +242,12 @@ exports.createInventoryDocument = catchAsync(async (req, res, next) => {
     return next(new AppError("Inventory not found.", 404));
   }
   if (req.body.attachments && Array.isArray(req.body.attachments) && req.body.attachments.length > 0) {
+    const fileUrls = req.body.attachments.map(att => att.fileUrl);
+    const uniqueFileUrls = new Set(fileUrls);
+    if (fileUrls.length !== uniqueFileUrls.size) {
+      return next(new AppError("Duplicate attachments found in the request.", 400));
+    }
+
     const uploadDir = `/uploads/${req.uploadDirectory}`;
     const attachments = [];
     for (let i = 0; i < req.body.attachments.length; i++) {
@@ -219,13 +260,25 @@ exports.createInventoryDocument = catchAsync(async (req, res, next) => {
         const relativeAddress = `${req.uploadDirectory}/${result.fileName}`;
         attachments.push({
           fileUrl: relativeAddress,
-          tags: req.body.tags?.[i] || []     // default empty array
+          tags: req.body.attachments[i].tags || []
         });
       }
     }
     req.body.attachments = attachments;
-    delete req.body.images;
-    delete req.body.image;
+  }
+
+  const existingInventoryDoc = await Document.findOne({
+    inventory: req.body.inventory,
+    type: req.body.type,
+    assignType: "inventory",
+    status: 'active'
+  });
+
+  if (existingInventoryDoc) {
+    return next(new AppError(
+      `A document of type "${req.body.type}" already exists for this inventory.`,
+      400
+    ));
   }
   const document = await Document.create(req.body);
   const newIDNumber = await getNextInSequence("documents");
@@ -241,6 +294,7 @@ exports.createInventoryDocument = catchAsync(async (req, res, next) => {
     doc: document,
   });
 });
+
 exports.updateInventoryDocument = catchAsync(async (req, res, next) => {
   const docId = req.params.id;
   const { error } = inventoryDocumentValidationSchema.validate(req.body);

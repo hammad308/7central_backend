@@ -24,7 +24,7 @@ const saleSchema = new mongoose.Schema({
   },
 
   sellingPrice: { type: Number, required: true },
-  actualPrice: { type: Number,  default: null },
+  actualPrice: { type: Number, default: null },
 
   plan: { type: mongoose.Schema.Types.ObjectId, ref: 'InstallmentPlan' },
   onwershipType: {
@@ -42,16 +42,14 @@ const saleSchema = new mongoose.Schema({
     required: [true, "Payment type is required."],
     index: true,
   },
-  remarks:{
-    type:String,
-    required:true
+  remarks: {
+    type: String,
+    required: true
   },
-  image:{
-    type:String,
-    required:true
+  image: {
+    type: String,
+    required: true
   },
-
-
   status: { type: String, enum: SALE_STATUS, default: 'draft', index: true },
   transferredTo: { type: mongoose.Schema.Types.ObjectId, ref: 'Sale', default: null },
   transferredFrom: { type: mongoose.Schema.Types.ObjectId, ref: 'Sale', default: null },

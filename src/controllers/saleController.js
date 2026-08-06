@@ -1,4 +1,3 @@
-
 const catchAsync = require("../utils/catchAsync");
 const { sendSuccessResponse, getLongAutoIncrementId, displayNameFromBuyers } = require("../utils/helpers");
 const AppError = require("../utils/appError");
@@ -132,55 +131,89 @@ exports.changeInventoryOwnershipSale = catchAsync(async (req, res, next) => {
 
 exports.createPaymentPlan = catchAsync(async (req, res, next) => {
   const { value, error } = installmentPlanSchema.validate(req.body);
-  if (error) {
-    return next(new AppError(error.details[0].message, 422));
-  }
+  if (error) return next(new AppError(error.details[0].message, 422));
+
   const sale = await Sale.findById(value.sale);
-  if (!sale) throw new Error("Sale not found");
-  if (value.totalScheduled == null) {
-    value.totalScheduled = value._computedTotalScheduled;
+  if (!sale) return next(new AppError("Sale not found", 404));
+
+  // Check for existing plan
+  const existingPlan = await InstallmentPlan.findOne({ sale: value.sale });
+  if (existingPlan) {
+    return next(new AppError("A payment plan already exists for this sale.", 400));
   }
-  if (value.fullPayment) {
+
+  // Calculate totalScheduled
+  if (value.totalScheduled == null || value.totalScheduled === 0) {
+    value.totalScheduled = value._computedTotalScheduled || 0;
+  }
+  if (value.fullPayment && value.fullPayment > 0) {
     value.totalScheduled = value.fullPayment;
   }
   delete value._computedTotalScheduled;
-  const plan = await InstallmentPlan.create(value);
+
+  // Create plan with isApproved: false
+  const plan = await InstallmentPlan.create({
+    ...value,
+    isApproved: false,
+    approvedBy: null,
+    approvedAt: null
+  });
+
+  // Update sale with plan reference (status remains 'draft')
   sale.plan = plan._id;
   await sale.save();
 
-
-  // if you want plan.totalScheduled to be the sum of all rows, uncomment:
-  // plan.totalScheduled = total;
-  // await plan.save();
-
   sendSuccessResponse(res, 200, logger, {
-    message: "Inventory Purchase plan created successfully.",
+    message: "Payment plan created successfully. Waiting for approval.",
     plan,
-    sale,
+    sale
   });
 });
 
 exports.approvePurchasePlan = catchAsync(async (req, res, next) => {
   const plan = await InstallmentPlan.findById(req.params.id);
   if (!plan) {
-    return next(new AppError("Installment Not Found Or You entered Invalid Installment Plan ID", 400))
+    return next(new AppError("Installment plan not found or invalid ID.", 404));
   }
+
   if (plan.isApproved) {
     return next(new AppError("This payment plan is already approved!", 400));
   }
+
+  const sale = await Sale.findById(plan.sale);
+  if (!sale) {
+    return next(new AppError("Sale not found.", 404));
+  }
+
+  if (sale.status === 'active') {
+    return next(new AppError("This sale is already active.", 400));
+  }
+
+  // APPROVE THE PLAN
   plan.isApproved = true;
+  plan.approvedBy = req.user._id;
+  plan.approvedAt = new Date();
   await plan.save();
+
+  // GENERATE INSTALLMENTS using the builder (NOW with today = approval date)
   const rows = buildInstallmentRows(plan, plan.sale, req.user._id);
   const docs = await Installment.insertMany(rows);
-  const total = docs.reduce((s, r) => s + r.amount, 0);
+  const totalAmount = docs.reduce((s, r) => s + r.amount, 0);
 
-  const sale = await Sale.findByIdAndUpdate(plan.sale, { status: "active" }, { runValidators: true, returnDocument: "after" });
+  // Update sale status to 'active'
+  const updatedSale = await Sale.findByIdAndUpdate(
+    plan.sale,
+    { status: "active" },
+    { runValidators: true, returnDocument: "after" }
+  );
+
   sendSuccessResponse(res, 200, logger, {
-    message: "Inventory Purchase plan approved successfully.",
+    message: "Payment plan approved successfully. Installments have been generated.",
     plan,
+    sale: updatedSale,
     installments: docs,
-    sale,
-    totalAmount: total
+    totalAmount: totalAmount,
+    totalInstallments: docs.length
   });
 });
 

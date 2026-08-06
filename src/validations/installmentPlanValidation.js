@@ -50,7 +50,8 @@ const monthlySchema = Joi.object({
   startDate: isoDate.optional().messages({
     'date.base': 'Monthly startDate must be a valid date.',
     'date.format': 'Monthly startDate must be in ISO format.'
-  })});
+  })
+});
 
 const balloonSchema = Joi.object({
   count: natInt.required().messages({
@@ -93,97 +94,109 @@ const installmentPlanSchema = Joi.object({
   sale: objectId.required().messages({
     'any.required': 'sale ID is required.',
     'string.base': 'sale ID must be a string.',
+    'string.pattern.base': 'Invalid Sale ID format.'
   }),
   inventory: objectId.required().messages({
     'any.required': 'Inventory ID is required.',
     'string.base': 'Inventory ID must be a string.',
+    'string.pattern.base': 'Invalid Inventory ID format.'
   }),
- bookingDate: isoDate.optional().messages({
-    'date.base': 'Booking startDate must be a valid date.',
-    'date.format': 'Booking startDate must be in ISO format.'
+  bookingDate: isoDate.optional().allow(null).messages({
+    'date.base': 'Booking date must be a valid date.',
+    'date.format': 'Booking date must be in ISO format.'
   }),
   category: Joi.string().trim().min(1).required().messages({
-    'any.required': 'category is required like full_payment or 1 year installments, 2 year installments etc.',
-    'string.base': 'category must be a string.',
+    'any.required': 'Category is required like full_payment or 1 year installments, 2 year installments etc.',
+    'string.base': 'Category must be a string.',
+    'string.empty': 'Category cannot be empty.'
   }),
 
-  // Milestones (all required and > 0)
-  fullPayment: money.optional().messages({
+  // Milestones
+  fullPayment: money.optional().allow(null, 0).messages({
     'number.base': 'Full payment must be a number.',
     'number.positive': 'Full payment must be greater than 0.'
   }),
-  downPayment: money.optional().messages({
+  downPayment: money.optional().allow(null, 0).messages({
     'number.base': 'Down payment must be a number.',
     'number.positive': 'Down payment must be greater than 0.'
   }),
-  allocation:  money.optional().allow(null,).messages({
+  allocation: money.optional().allow(null, 0).messages({
     'number.base': 'Allocation must be a number.',
     'number.positive': 'Allocation must be greater than 0.'
   }),
-  confirmation: money.optional().allow(null,).messages({
+  confirmation: money.optional().allow(null, 0).messages({
     'number.base': 'Confirmation must be a number.',
     'number.positive': 'Confirmation must be greater than 0.'
   }),
-  possession:  money.optional().allow(null,).messages({
+  possession: money.optional().allow(null, 0).messages({
     'number.base': 'Possession must be a number.',
     'number.positive': 'Possession must be greater than 0.'
   }),
 
-  // Streams are optional; if present they must be complete
-  quarterly: quarterlySchema.optional().allow(null,).messages({
+  // Streams
+  quarterly: quarterlySchema.optional().allow(null).messages({
     'object.base': 'Quarterly installment block must be an object.'
   }),
-  monthly:   monthlySchema.optional().allow(null,).messages({
+  monthly: monthlySchema.optional().allow(null).messages({
     'object.base': 'Monthly installment block must be an object.'
   }),
-  balloon:   balloonSchema.optional().allow(null,).messages({
+  balloon: balloonSchema.optional().allow(null).messages({
     'object.base': 'Balloon installment block must be an object.'
   }),
-  monthlyBalloon:   monthlyBalloonSchema.optional().allow(null,).messages({
+  monthlyBalloon: monthlyBalloonSchema.optional().allow(null).messages({
     'object.base': 'Monthly Balloon installment block must be an object.'
   }),
 
-  // totalScheduled: Joi.number().min(0).optional(),
+  totalScheduled: Joi.number().min(0).optional().allow(null).messages({
+    'number.base': 'Total scheduled must be a number.',
+    'number.min': 'Total scheduled must be at least 0.'
+  }),
+
   currency: Joi.string().trim().default('PKR')
 })
-// Cross-field custom check: if totalScheduled is provided, verify it matches sum
-.custom((value, helpers) => {
-  const {
-    downPayment = 0,
-    allocation = 0,
-    confirmation = 0,
-    possession = 0,
-    quarterly,
-    monthly,
-    balloon,
-    totalScheduled
-  } = value;
+  .custom((value, helpers) => {
+    const {
+      downPayment = 0,
+      allocation = 0,
+      confirmation = 0,
+      possession = 0,
+      fullPayment = 0,
+      quarterly,
+      monthly,
+      balloon,
+      monthlyBalloon,
+      totalScheduled
+    } = value;
 
-  const sumStreams = (blk) => blk ? (blk.count * blk.amount) : 0;
+    const sumStreams = (blk) => blk ? (blk.count * blk.amount) : 0;
 
-  const computedTotal =
-    downPayment +
-    allocation  +
-    confirmation +
-    possession  +
-    sumStreams(quarterly) +
-    sumStreams(monthly) +
-    sumStreams(balloon);
-
-  // If client sent totalScheduled, ensure it's equal (tolerate tiny float diffs)
-  if (typeof totalScheduled === 'number') {
-    const diff = Math.abs(totalScheduled - computedTotal);
-    if (diff > 0.01) {
-      return helpers.error('any.custom', { message:
-        `totalScheduled (${totalScheduled}) does not match computed total (${computedTotal})`
-      });
+    let computedTotal = 0;
+    if (fullPayment > 0) {
+      computedTotal = fullPayment;
+    } else {
+      computedTotal =
+        downPayment +
+        allocation +
+        confirmation +
+        possession +
+        sumStreams(quarterly) +
+        sumStreams(monthly) +
+        sumStreams(balloon) +
+        sumStreams(monthlyBalloon);
     }
-  }
 
-  // Attach computed for downstream use (optional convenience)
-  value._computedTotalScheduled = computedTotal;
-  return value;
-}, 'Total Scheduled cross-check');
+    if (totalScheduled !== undefined && totalScheduled !== null) {
+      const diff = Math.abs(totalScheduled - computedTotal);
+      if (diff > 0.01) {
+        return helpers.message({
+          custom: `totalScheduled (${totalScheduled}) does not match computed total (${computedTotal}). Please verify your installment amounts.`
+        });
+      }
+    }
+
+    value._computedTotalScheduled = computedTotal;
+    return value;
+  }, 'Total Scheduled cross-check');
 
 module.exports = {
   installmentPlanSchema
