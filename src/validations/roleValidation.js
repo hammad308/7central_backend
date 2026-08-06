@@ -1,4 +1,7 @@
 const Joi = require('joi');
+const menus = require("../constants/menus.constants");
+
+const menuValues = Object.values(menus);
 
 const permissionActionSchema = Joi.object({
   read: Joi.boolean().optional(),
@@ -9,7 +12,10 @@ const permissionActionSchema = Joi.object({
 });
 
 const permissionSchema = Joi.object({
-  menu: Joi.string().required(),
+  menu: Joi.string().valid(...menuValues).required().messages({
+    'any.only': `Menu must be one of: ${menuValues.join(', ')}`,
+    'any.required': 'Menu is required',
+  }),
   actions: permissionActionSchema.required(),
 });
 
@@ -19,7 +25,7 @@ const roleValidationSchema = Joi.object({
     'string.min': 'Role name must be at least 2 characters',
     'string.max': 'Role name cannot exceed 50 characters',
   }),
-  slug: Joi.string().lowercase().optional(), // optional; if not given, auto‑generate from name
+  slug: Joi.string().lowercase().optional(),
   permissions: Joi.array().items(permissionSchema).min(1).required().messages({
     'any.required': 'At least one permission is required',
   }),

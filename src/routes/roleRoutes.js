@@ -15,7 +15,7 @@ router
   .post(
     printRequest,
     protect,
-    checkActionAccess(menus.roles, 'create'), // you'll add 'roles' to menus.constants
+    checkActionAccess(menus.roles, 'create'),
     create
   )
   .get(

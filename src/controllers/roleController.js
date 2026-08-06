@@ -77,10 +77,10 @@ exports.delete = catchAsync(async (req, res, next) => {
   const role = await Role.findById(req.params.id);
   if (!role) return next(new AppError('Role not found.', 404));
 
-  // Optional: prevent deletion if any employee has this role
-  // const Employee = require('../models/employeeModel');
-  // const count = await Employee.countDocuments({ role: role._id, status: { $ne: 'deleted' } });
-  // if (count > 0) return next(new AppError('Cannot delete role assigned to employees.', 403));
+  // prevent deletion if any employee has this role
+  const Employee = require('../models/employeeModel');
+  const count = await Employee.countDocuments({ role: role._id, status: { $ne: 'deleted' } })
+  if (count > 0) return next(new AppError('Cannot delete role assigned to employees.', 403));
 
   await Role.findByIdAndDelete(req.params.id);
 

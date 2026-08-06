@@ -17,6 +17,13 @@ const popObj = [
 exports.create = catchAsync(async (req, res, next) => {
   const { error } = workingHourValidationSchema.validate(req.body);
   if (error) return next(new AppError(error.details[0].message, 400));
+  const isShiftExistBefore = await WorkingHour.findOne({
+    shiftTitle: req.body.shiftTitle,
+    status: 'active'
+  });
+  if (isShiftExistBefore) {
+    return next(new AppError("Shift with this title exists Before", 422));
+  }
 
   const shift = await WorkingHour.create({
     ...req.body,
@@ -46,7 +53,7 @@ exports.getAll = catchAsync(async (req, res, next) => {
 });
 
 // Get single shift
-exports.getOne = handlerFactory.getOne(WorkingHour, popObj, logger);
+exports.getOne = handlerFactory.getOne(WorkingHour, popObj, logger, 'id', '_id', { status: 'active' });
 
 // Update shift
 exports.update = catchAsync(async (req, res, next) => {
