@@ -1,25 +1,95 @@
-"use strict";
+const router = require('express').Router();
+const menus = require('../constants/menus.constants');
+const {
+  create,
+  getAll,
+  getAllOfEmployee,
+  myTasks,
+  getOne,
+  update,
+  updateSubtasks,
+  addComment,
+  addNewSubtask,
+  addAttachment,
+  deleteAttachment,
+  deleteSubtask,
+  updateSubtaskStatus,
+  delete: deleteTask,
+} = require('../controllers/employeesTaskController');
+const { printRequest } = require('../logger')('EMPLOYEE_TASK_CONTROLLER');
+const { protect, checkActionAccess } = require('../middlewares/protect');
 
-const router = require("express").Router();
-const employeesTasksController = require("../controllers/employeesTasksController.js");
-const { authorize } = require("../middlewares/accessControlMiddlewares.js");
+// Employee self-service routes (my tasks)
+router.get('/my-tasks', printRequest, protect, myTasks);
+router.get('/my-tasks/:id', printRequest, protect, getOne);
 
-router.post("/create", authorize('employeetasks', 'create'), employeesTasksController.create);
-router.delete("/delete/:id", authorize('employeetasks', 'delete'), employeesTasksController.delete);
-router.delete("/delete-attachment", authorize('employeetasks', 'update'), employeesTasksController.deleteAttachment);
-router.delete("/delete-subtask", authorize('employeetasks', 'update'), employeesTasksController.deleteSubtask);
-router.patch("/add-attachment/:id", authorize('employeetasks', 'update'), employeesTasksController.addAttachment);
-router.patch("/update-details/:id", authorize('employeetasks', 'update'), employeesTasksController.updateDetails);
-router.patch("/update-subtasks/:id", authorize('employeetasks', 'update'), employeesTasksController.updateSubtasks);
-router.patch("/add-comment/:id", authorize('mytasks', 'update'), employeesTasksController.addComment);
-router.patch("/add-new-subtask/:id", authorize('employeetasks', 'update'), employeesTasksController.addNewSubtask);
-router.patch("/update-subtask-status", employeesTasksController.updateSubtaskStatus);
-router.get("/of-employee/:id", authorize('employeetasks', 'read'), employeesTasksController.getAllOfEmployee);
+// Admin routes
+router
+  .route('/')
+  .post(printRequest, protect, checkActionAccess(menus.employeetasks, 'create'), create)
+  .get(printRequest, protect, checkActionAccess(menus.employeetasks, 'list'), getAll);
 
-router.get("/my-tasks", authorize('mytasks', 'read'), employeesTasksController.myTasks);
-router.get("/my-tasks/:id", authorize('mytasks', 'read'), employeesTasksController.getOne);
+router.get(
+  '/of-employee/:id',
+  printRequest,
+  protect,
+  checkActionAccess(menus.employeetasks, 'read'),
+  getAllOfEmployee
+);
 
-router.get("/:id", authorize('employeetasks', 'read'), employeesTasksController.getOne);
-router.get("/", authorize('employeetasks', 'read'), employeesTasksController.getAll);
+router
+  .route('/:id')
+  .get(printRequest, protect, checkActionAccess(menus.employeetasks, 'read'), getOne)
+  .put(printRequest, protect, checkActionAccess(menus.employeetasks, 'update'), update)
+  .delete(printRequest, protect, checkActionAccess(menus.employeetasks, 'delete'), deleteTask);
+
+// Subtask & attachment routes
+router.patch(
+  '/update-subtasks/:id',
+  printRequest,
+  protect,
+  checkActionAccess(menus.employeetasks, 'update'),
+  updateSubtasks
+);
+router.patch(
+  '/add-comment/:id',
+  printRequest,
+  protect,
+  addComment
+);
+router.patch(
+  '/add-new-subtask/:id',
+  printRequest,
+  protect,
+  checkActionAccess(menus.employeetasks, 'update'),
+  addNewSubtask
+);
+router.patch(
+  '/add-attachment/:id',
+  printRequest,
+  protect,
+  checkActionAccess(menus.employeetasks, 'update'),
+  addAttachment
+);
+router.delete(
+  '/delete-attachment',
+  printRequest,
+  protect,
+  checkActionAccess(menus.employeetasks, 'update'),
+  deleteAttachment
+);
+router.delete(
+  '/delete-subtask',
+  printRequest,
+  protect,
+  checkActionAccess(menus.employeetasks, 'update'),
+  deleteSubtask
+);
+router.patch(
+  '/update-subtask-status',
+  printRequest,
+  protect,
+  updateSubtaskStatus
+);
 
 module.exports = router;
