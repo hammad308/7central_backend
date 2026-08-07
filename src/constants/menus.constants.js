@@ -27,7 +27,8 @@ const menus = {
     publicholidays: "PublicHoliday",
     lead: "Lead",
     dealer: "Dealer",
-    campaign: "Campaign"
+    campaign: "Campaign",
+    events:"Event"
 }
 
 module.exports = menus;

@@ -85,6 +85,7 @@ app.use("/api/employee-leave", require("./routes/employeeLeaveRoutes.js"));
 app.use("/api/employee-bonus", require("./routes/employeeBonusRoutes.js"));
 app.use("/api/employee-complaint", require("./routes/employeeComplaintRoutes.js"));
 app.use("/api/employee-task", require("./routes/employeeTaskRoutes"));
+app.use("/api/event", require("./routes/eventRoutes"));
 app.use("/api/workinghour", require("./routes/workingHourRoutes.js"));
 app.use("/api/employee-attendance", require("./routes/employeeAttendanceRoutes.js"));
 app.use("/api/leaverule", require("./routes/leaveRuleRoutes.js"));

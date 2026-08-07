@@ -15,7 +15,7 @@ const {
   deleteSubtask,
   updateSubtaskStatus,
   delete: deleteTask,
-} = require('../controllers/employeesTaskController');
+} = require('../controllers/employeeTaskController');
 const { printRequest } = require('../logger')('EMPLOYEE_TASK_CONTROLLER');
 const { protect, checkActionAccess } = require('../middlewares/protect');
 
