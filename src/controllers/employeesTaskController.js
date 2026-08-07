@@ -335,7 +335,7 @@ exports.update = catchAsync(async (req, res, next) => {
     try {
       await EmployeeNotification.create({
         employee: updatedTask.supervisor._id,
-        redirectPage: `employee-tasks/${updatedTask._id}`,
+        redirectPage: `employee-task/${updatedTask._id}`,
         message: `You have been made supervisor of the task "${updatedTask.taskTitle}".`,
       });
     } catch (err) {
@@ -348,7 +348,7 @@ exports.update = catchAsync(async (req, res, next) => {
     try {
       await EmployeeNotification.create({
         employee: emp._id || emp,
-        redirectPage: `employee-tasks/${updatedTask._id}`,
+        redirectPage: `employee-task/${updatedTask._id}`,
         message: `Task "${updatedTask.taskTitle}" has been updated.`,
       });
     } catch (err) {
