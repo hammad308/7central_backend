@@ -19,16 +19,20 @@ const {
 const { printRequest } = require('../logger')('EMPLOYEE_TASK_CONTROLLER');
 const { protect, checkActionAccess } = require('../middlewares/protect');
 
-// Employee self-service routes (my tasks)
-router.get('/my-tasks', printRequest, protect, myTasks);
-router.get('/my-tasks/:id', printRequest, protect, getOne);
+// 1. Static Routes (Must be defined first)
 
-// Admin routes
+// Employee self-service
+router.get('/my-tasks', printRequest, protect, myTasks);
+
+// Root admin endpoints
 router
   .route('/')
   .post(printRequest, protect, checkActionAccess(menus.employeetasks, 'create'), create)
   .get(printRequest, protect, checkActionAccess(menus.employeetasks, 'list'), getAll);
 
+// 2. Specialized Dynamic Routes
+
+// Employee specific tasks
 router.get(
   '/of-employee/:id',
   printRequest,
@@ -37,13 +41,10 @@ router.get(
   getAllOfEmployee
 );
 
-router
-  .route('/:id')
-  .get(printRequest, protect, checkActionAccess(menus.employeetasks, 'read'), getOne)
-  .put(printRequest, protect, checkActionAccess(menus.employeetasks, 'update'), update)
-  .delete(printRequest, protect, checkActionAccess(menus.employeetasks, 'delete'), deleteTask);
+// Self-service task details (placed before the general /:id route)
+router.get('/my-tasks/:id', printRequest, protect, getOne);
 
-// Subtask & attachment routes
+// Subtask management
 router.patch(
   '/update-subtasks/:id',
   printRequest,
@@ -51,13 +52,7 @@ router.patch(
   checkActionAccess(menus.employeetasks, 'update'),
   updateSubtasks
 );
-router.patch(
-  '/add-comment/:id',
-  printRequest,
-  protect,
-  addComment
-);
-router.patch(
+router.post( // Changed to POST for resource creation
   '/add-new-subtask/:id',
   printRequest,
   protect,
@@ -65,6 +60,29 @@ router.patch(
   addNewSubtask
 );
 router.patch(
+  '/update-subtask-status',
+  printRequest,
+  protect,
+  updateSubtaskStatus
+);
+router.delete(
+  '/delete-subtask',
+  printRequest,
+  protect,
+  checkActionAccess(menus.employeetasks, 'update'),
+  deleteSubtask
+);
+
+// Comment management
+router.post( // Changed to POST for resource creation
+  '/add-comment/:id',
+  printRequest,
+  protect,
+  addComment
+);
+
+// Attachment management
+router.post( // Changed to POST for resource creation
   '/add-attachment/:id',
   printRequest,
   protect,
@@ -78,18 +96,12 @@ router.delete(
   checkActionAccess(menus.employeetasks, 'update'),
   deleteAttachment
 );
-router.delete(
-  '/delete-subtask',
-  printRequest,
-  protect,
-  checkActionAccess(menus.employeetasks, 'update'),
-  deleteSubtask
-);
-router.patch(
-  '/update-subtask-status',
-  printRequest,
-  protect,
-  updateSubtaskStatus
-);
+
+// 3. Generic Dynamic Routes (Must be last)
+router
+  .route('/:id')
+  .get(printRequest, protect, checkActionAccess(menus.employeetasks, 'read'), getOne)
+  .put(printRequest, protect, checkActionAccess(menus.employeetasks, 'update'), update)
+  .delete(printRequest, protect, checkActionAccess(menus.employeetasks, 'delete'), deleteTask);
 
 module.exports = router;

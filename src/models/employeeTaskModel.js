@@ -8,7 +8,7 @@ const fileAttachmentSchema = new Schema({
   },
   fileNameOnServerDisk: {
     type: String,
-    required: [true, "Name of file stored on server's disk is required."],
+    required: [true, "Name of file stored on server's disk is required."]
   },
 });
 
@@ -22,8 +22,9 @@ const subTaskSchema = new Schema({
     default: null,
   },
   subtaskStatus: {
-    type: Number,
-    enum: [0, 1], // 0 - pending, 1 - finished
+    type: String,
+    enum: ['pending', 'completed'],
+    default: 'pending',
     required: [true, 'Subtask status is required'],
   },
   employeeID: {
@@ -91,14 +92,21 @@ const employeeTaskSchema = new Schema(
       default: null,
     },
     taskStatus: {
-      type: Number,
-      enum: [0, 1], // 0 - pending, 1 - finished
+      type: String,
+      enum: ['pending', 'completed'],
+      default: 'pending',
       required: [true, 'Task status is required'],
     },
     taskPriority: {
-      type: Number,
-      enum: [0, 1, 2, 3], // 0 - low, 1 - normal, 2 - high, 3 - urgent
+      type: String,
+      enum: ['low', 'normal', 'high', 'urgent'],
+      default: 'normal',
       required: [true, 'Task priority is required'],
+    },
+    createdBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: [true, 'Creator is required'],
     },
     status: {
       type: String,

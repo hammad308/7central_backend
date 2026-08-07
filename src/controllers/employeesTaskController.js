@@ -3,7 +3,7 @@ const Joi = require('joi');
 const Employee = require('../models/employeeModel');
 const EmployeeTask = require('../models/employeeTaskModel');
 const EmployeeNotification = require('../models/employeeNotificationModel');
-const { uploadDataFile, deleteDataFile } = require('../utils/uploadImage');
+const { uploadDataFile, deleteDataFile } = require('../utils/uploadFiles');
 const { sendSuccessResponse, getLongAutoIncrementId } = require('../utils/helpers');
 const { getNextInSequence } = require('../utils/db');
 const AppError = require('../utils/appError');
@@ -11,8 +11,9 @@ const catchAsync = require('../utils/catchAsync');
 const {
   createEmployeeTaskValidationSchema,
   updateEmployeeTaskValidationSchema,
+  fileAttachmentValidationSchema,
 } = require('../validations/employeeTaskValidation');
-const { PREFIX_EMPLOYEE_TASK_AUTOINCREMENTID } = require('../constants/app.constants'); // add this constant if missing, or use a default string
+const { PREFIX_EMPLOYEE_TASK_AUTOINCREMENTID } = require('../constants/app.constants');
 
 const logger = require('../logger')('EMPLOYEE_TASK_CONTROLLER');
 
@@ -26,9 +27,11 @@ const popObj = [
 
 // Helper: validate all employee IDs and supervisor exist and are active
 const validateEmployees = async (employeeIDs, supervisorId) => {
-  // Check all employee IDs
+  const allIds = [...employeeIDs];
+  if (supervisorId) allIds.push(supervisorId);
+
   const employees = await Employee.find({
-    _id: { $in: [...employeeIDs, supervisorId] },
+    _id: { $in: allIds },
     status: { $nin: ['deleted', 'inactive'] },
     employmentStatus: { $nin: ['terminated', 'resigned'] },
   });
@@ -41,22 +44,39 @@ const validateEmployees = async (employeeIDs, supervisorId) => {
     }
   }
 
-  if (!foundIds.includes(supervisorId.toString())) {
+  if (supervisorId && !foundIds.includes(supervisorId.toString())) {
     throw new AppError('Supervisor not found or inactive', 404);
   }
 
   return employees;
 };
 
-// CREATE – admin creates a task
+// ==================== CREATE ====================
 exports.create = catchAsync(async (req, res, next) => {
   const { error } = createEmployeeTaskValidationSchema.validate(req.body);
   if (error) return next(new AppError(error.details[0].message, 400));
 
   await validateEmployees(req.body.employeeIDs, req.body.supervisor);
 
-  // Duplicate check: same title + supervisor + overlapping date range within 24 hours
-  const recentDuplicate = await EmployeeTask.findOne({
+  // Validate subtask employees
+  if (req.body.subtasks && req.body.subtasks.length > 0) {
+    const subtaskEmployeeIds = req.body.subtasks.map(st => st.employeeID);
+    await validateEmployees(subtaskEmployeeIds);
+
+    const mainEmployeeIdStrings = req.body.employeeIDs.map(id => id.toString());
+    for (const subtaskEmpId of subtaskEmployeeIds) {
+      if (!mainEmployeeIdStrings.includes(subtaskEmpId.toString())) {
+        return next(new AppError(
+          `Subtask employee ${subtaskEmpId} must be part of the main task assignees`,
+          403
+        ));
+      }
+    }
+  }
+
+  // HYBRID DUPLICATE CHECK
+  // Step 1: Exact match within 24 hours (accidental double-submit)
+  const recentExactDuplicate = await EmployeeTask.findOne({
     taskTitle: req.body.taskTitle,
     supervisor: req.body.supervisor,
     status: 'active',
@@ -65,11 +85,36 @@ exports.create = catchAsync(async (req, res, next) => {
     taskFinishByDate: req.body.taskFinishByDate,
   });
 
-  if (recentDuplicate) {
-    return next(new AppError('A similar task already exists. Please check and try again.', 409));
+  if (recentExactDuplicate) {
+    return next(new AppError(
+      'A task with the same title, supervisor, and dates was created recently. Please check and try again.',
+      409
+    ));
   }
 
-  // Generate IDs before create (single write)
+  // Step 2: Same title + supervisor + overlapping date range (any time)
+  const overlappingTask = await EmployeeTask.findOne({
+    taskTitle: req.body.taskTitle,
+    supervisor: req.body.supervisor,
+    status: 'active',
+    $or: [
+      // New task starts during existing task
+      { taskStartByDate: { $lte: req.body.taskStartByDate }, taskFinishByDate: { $gte: req.body.taskStartByDate } },
+      // New task ends during existing task
+      { taskStartByDate: { $lte: req.body.taskFinishByDate }, taskFinishByDate: { $gte: req.body.taskFinishByDate } },
+      // New task completely covers existing task
+      { taskStartByDate: { $gte: req.body.taskStartByDate }, taskFinishByDate: { $lte: req.body.taskFinishByDate } },
+    ],
+  });
+
+  if (overlappingTask) {
+    return next(new AppError(
+      'A task with the same title and supervisor already exists in this date range.',
+      409
+    ));
+  }
+
+  // Generate IDs
   const newIDNumber = await getNextInSequence('employeeTasks');
   const longAutoIncrementId = getLongAutoIncrementId(
     PREFIX_EMPLOYEE_TASK_AUTOINCREMENTID || 'ETSK',
@@ -83,30 +128,7 @@ exports.create = catchAsync(async (req, res, next) => {
     createdBy: req.user._id,
   });
 
-  // Notify supervisor
-  try {
-    await EmployeeNotification.create({
-      employee: task.supervisor,
-      redirectPage: `employee-tasks/${task._id}`,
-      message: `You have been made supervisor of the new task "${task.taskTitle}".`,
-    });
-  } catch (err) {
-    logger.error('Failed to send supervisor notification', err);
-  }
-
-  // Notify assignees
-  for (const empId of task.employeeIDs) {
-    try {
-      await EmployeeNotification.create({
-        employee: empId,
-        redirectPage: `employee-tasks/${task._id}`,
-        message: `You have been assigned a new task "${task.taskTitle}".`,
-      });
-    } catch (err) {
-      logger.error('Failed to send employee notification', err);
-    }
-  }
-
+  // Notifications...
   const populatedTask = await EmployeeTask.findById(task._id).populate(popObj);
 
   sendSuccessResponse(res, 201, logger, {
@@ -115,7 +137,7 @@ exports.create = catchAsync(async (req, res, next) => {
   });
 });
 
-// ADMIN: Get all tasks
+// ==================== ADMIN: Get all tasks ====================
 exports.getAll = catchAsync(async (req, res, next) => {
   const query = { status: 'active' };
   const page = parseInt(req.query.page) || 1;
@@ -138,7 +160,7 @@ exports.getAll = catchAsync(async (req, res, next) => {
   });
 });
 
-// ADMIN: Get all tasks of a specific employee
+// ==================== ADMIN: Get all tasks of a specific employee ====================
 exports.getAllOfEmployee = catchAsync(async (req, res, next) => {
   if (!mongoose.isValidObjectId(req.params.id)) {
     return next(new AppError('Invalid employee ID', 422));
@@ -163,8 +185,8 @@ exports.getAllOfEmployee = catchAsync(async (req, res, next) => {
     .sort({ createdAt: -1 });
 
   const docsCount = await EmployeeTask.countDocuments(query);
-  const pendingTasksCount = await EmployeeTask.countDocuments({ ...query, taskStatus: 0 });
-  const finishedTasksCount = await EmployeeTask.countDocuments({ ...query, taskStatus: 1 });
+  const pendingTasksCount = await EmployeeTask.countDocuments({ ...query, taskStatus: 'pending' });
+  const finishedTasksCount = await EmployeeTask.countDocuments({ ...query, taskStatus: 'completed' });
   const percentTasksFinished = docsCount > 0 ? (finishedTasksCount / docsCount) * 100 : 0;
 
   sendSuccessResponse(res, 200, logger, {
@@ -179,7 +201,7 @@ exports.getAllOfEmployee = catchAsync(async (req, res, next) => {
   });
 });
 
-// EMPLOYEE: My tasks
+// ==================== EMPLOYEE: My tasks ====================
 exports.myTasks = catchAsync(async (req, res, next) => {
   if (!req.user.employee_id) {
     return next(new AppError('No employee profile linked to your account', 403));
@@ -197,8 +219,8 @@ exports.myTasks = catchAsync(async (req, res, next) => {
     .sort({ createdAt: -1 });
 
   const docsCount = await EmployeeTask.countDocuments(query);
-  const pendingTasksCount = await EmployeeTask.countDocuments({ ...query, taskStatus: 0 });
-  const finishedTasksCount = await EmployeeTask.countDocuments({ ...query, taskStatus: 1 });
+  const pendingTasksCount = await EmployeeTask.countDocuments({ ...query, taskStatus: 'pending' });
+  const finishedTasksCount = await EmployeeTask.countDocuments({ ...query, taskStatus: 'completed' });
   const percentTasksFinished = docsCount > 0 ? (finishedTasksCount / docsCount) * 100 : 0;
 
   sendSuccessResponse(res, 200, logger, {
@@ -213,7 +235,7 @@ exports.myTasks = catchAsync(async (req, res, next) => {
   });
 });
 
-// Get single task (admin & employee both use this – ownership check if needed)
+// ==================== Get single task ====================
 exports.getOne = catchAsync(async (req, res, next) => {
   if (!mongoose.isValidObjectId(req.params.id)) {
     return next(new AppError('Invalid task ID', 422));
@@ -232,7 +254,7 @@ exports.getOne = catchAsync(async (req, res, next) => {
   });
 });
 
-// ADMIN: Update task details
+// ==================== ADMIN: Update task details ====================
 exports.update = catchAsync(async (req, res, next) => {
   if (!mongoose.isValidObjectId(req.params.id)) {
     return next(new AppError('Invalid task ID', 422));
@@ -247,18 +269,66 @@ exports.update = catchAsync(async (req, res, next) => {
   });
   if (!existingTask) return next(new AppError('Task not found', 404));
 
-  // If employees/supervisor provided, validate they exist
+  // Determine final employee IDs and supervisor
+  const finalEmployeeIDs = req.body.employeeIDs || existingTask.employeeIDs;
+  const finalSupervisor = req.body.supervisor || existingTask.supervisor;
+
+  // Validate main employees and supervisor if changed
   if (req.body.employeeIDs || req.body.supervisor) {
-    await validateEmployees(
-      req.body.employeeIDs || existingTask.employeeIDs,
-      req.body.supervisor || existingTask.supervisor
-    );
+    await validateEmployees(finalEmployeeIDs, finalSupervisor);
   }
 
-  const updatedTask = await EmployeeTask.findByIdAndUpdate(req.params.id, req.body, {
-    new: true,
-    runValidators: true,
-  }).populate(popObj);
+  // Validate subtask employees if subtasks provided
+  if (req.body.subtasks && req.body.subtasks.length > 0) {
+    const subtaskEmployeeIds = req.body.subtasks.map(st => st.employeeID);
+
+    // Check all subtask employees exist and are active
+    await validateEmployees(subtaskEmployeeIds);
+
+    // Check all subtask employees are in the main employeeIDs array
+    const mainEmployeeIdStrings = finalEmployeeIDs.map(id => id.toString());
+    for (const subtaskEmpId of subtaskEmployeeIds) {
+      if (!mainEmployeeIdStrings.includes(subtaskEmpId.toString())) {
+        return next(new AppError(
+          `Subtask employee ${subtaskEmpId} must be part of the main task assignees`,
+          403
+        ));
+      }
+    }
+  }
+
+  // DUPLICATE CHECK FOR UPDATE
+  if (req.body.taskTitle || req.body.supervisor || req.body.taskStartByDate || req.body.taskFinishByDate) {
+    const finalTitle = req.body.taskTitle || existingTask.taskTitle;
+    const finalSupervisor = req.body.supervisor || existingTask.supervisor;
+    const finalStartDate = req.body.taskStartByDate || existingTask.taskStartByDate;
+    const finalFinishDate = req.body.taskFinishByDate || existingTask.taskFinishByDate;
+
+    const overlappingTask = await EmployeeTask.findOne({
+      _id: { $ne: req.params.id }, // Exclude current task
+      taskTitle: finalTitle,
+      supervisor: finalSupervisor,
+      status: 'active',
+      $or: [
+        { taskStartByDate: { $lte: finalStartDate }, taskFinishByDate: { $gte: finalStartDate } },
+        { taskStartByDate: { $lte: finalFinishDate }, taskFinishByDate: { $gte: finalFinishDate } },
+        { taskStartByDate: { $gte: finalStartDate }, taskFinishByDate: { $lte: finalFinishDate } },
+      ],
+    });
+
+    if (overlappingTask) {
+      return next(new AppError(
+        'Another task with the same title and supervisor already exists in this date range.',
+        409
+      ));
+    }
+  }
+
+  const updatedTask = await EmployeeTask.findByIdAndUpdate(
+    req.params.id,
+    req.body,
+    { new: true, runValidators: true }
+  ).populate(popObj);
 
   // Notify if supervisor changed
   if (req.body.supervisor && req.body.supervisor !== existingTask.supervisor.toString()) {
@@ -292,23 +362,38 @@ exports.update = catchAsync(async (req, res, next) => {
   });
 });
 
-// ADMIN: Update subtasks (bulk replace)
+// ==================== ADMIN: Update subtasks (bulk replace) ====================
 exports.updateSubtasks = catchAsync(async (req, res, next) => {
   if (!mongoose.isValidObjectId(req.params.id)) {
     return next(new AppError('Invalid task ID', 422));
   }
 
   const subtaskValidationSchema = Joi.object({
-    subtaskTitle: Joi.string().required(),
-    subtaskDescription: Joi.string().allow('').required(),
-    subtaskStatus: Joi.number().valid(0, 1).required(),
+    subtaskTitle: Joi.string().required().messages({
+      'any.required': 'Subtask title is required',
+      'string.empty': 'Subtask title cannot be empty',
+    }),
+    subtaskDescription: Joi.string().optional().messages({
+      'string.base': 'Subtask description must be a string',
+    }),
+    subtaskStatus: Joi.string().valid('pending', 'completed').required().messages({
+      'any.required': 'Subtask status is required',
+      'any.only': 'Subtask status must be either "pending" or "completed"',
+    }),
     employeeID: Joi.string()
       .pattern(/^[0-9a-fA-F]{24}$/)
-      .required(),
+      .required()
+      .messages({
+        'any.required': 'Employee ID is required for subtask',
+        'string.pattern.base': 'Invalid employee ID format',
+      }),
   });
 
   const requestValidationSchema = Joi.object({
-    subtasks: Joi.array().items(subtaskValidationSchema).required(),
+    subtasks: Joi.array().items(subtaskValidationSchema).min(1).required().messages({
+      'array.min': 'At least one subtask is required',
+      'any.required': 'Subtasks array is required',
+    }),
   });
 
   const { error, value } = requestValidationSchema.validate(req.body);
@@ -320,17 +405,21 @@ exports.updateSubtasks = catchAsync(async (req, res, next) => {
   });
   if (!existingTask) return next(new AppError('Task not found', 404));
 
-  // Ensure all subtask assignees are part of the task
+  // Validate subtask employees exist and are part of main task
+  const subtaskEmployeeIds = value.subtasks.map(st => st.employeeID);
+  await validateEmployees(subtaskEmployeeIds);
+
   for (const subtask of value.subtasks) {
     if (!existingTask.employeeIDs.some((eid) => eid.toString() === subtask.employeeID)) {
       return next(new AppError('All subtask assignees must be part of the main task', 403));
     }
   }
 
-  const updatedTask = await EmployeeTask.findByIdAndUpdate(req.params.id, { subtasks: value.subtasks }, {
-    new: true,
-    runValidators: true,
-  }).populate(popObj);
+  const updatedTask = await EmployeeTask.findByIdAndUpdate(
+    req.params.id,
+    { subtasks: value.subtasks },
+    { new: true, runValidators: true }
+  ).populate(popObj);
 
   sendSuccessResponse(res, 200, logger, {
     message: 'Subtasks updated successfully',
@@ -338,7 +427,7 @@ exports.updateSubtasks = catchAsync(async (req, res, next) => {
   });
 });
 
-// EMPLOYEE/ADMIN: Add comment
+// ==================== EMPLOYEE/ADMIN: Add comment ====================
 exports.addComment = catchAsync(async (req, res, next) => {
   if (!mongoose.isValidObjectId(req.params.id)) {
     return next(new AppError('Invalid task ID', 422));
@@ -347,7 +436,13 @@ exports.addComment = catchAsync(async (req, res, next) => {
     return next(new AppError('No employee profile linked', 403));
   }
 
-  const schema = Joi.object({ content: Joi.string().required() });
+  const schema = Joi.object({
+    content: Joi.string().required().messages({
+      'any.required': 'Comment content is required',
+      'string.empty': 'Comment content cannot be empty',
+    }),
+  });
+
   const { error, value } = schema.validate(req.body);
   if (error) return next(new AppError(error.details[0].message, 400));
 
@@ -365,19 +460,27 @@ exports.addComment = catchAsync(async (req, res, next) => {
   });
 });
 
-// ADMIN: Add single subtask
+// ==================== ADMIN: Add single subtask ====================
 exports.addNewSubtask = catchAsync(async (req, res, next) => {
   if (!mongoose.isValidObjectId(req.params.id)) {
     return next(new AppError('Invalid task ID', 422));
   }
 
   const subtaskValidationSchema = Joi.object({
-    subtaskTitle: Joi.string().required(),
-    subtaskDescription: Joi.string().allow('').optional(),
-    subtaskStatus: Joi.number().valid(0, 1).required(),
+    subtaskTitle: Joi.string().required().messages({
+      'any.required': 'Subtask title is required',
+      'string.empty': 'Subtask title cannot be empty',
+    }),
+    subtaskDescription: Joi.string().optional().messages({
+      'string.base': 'Subtask description must be a string',
+    }),
     employeeID: Joi.string()
       .pattern(/^[0-9a-fA-F]{24}$/)
-      .required(),
+      .required()
+      .messages({
+        'any.required': 'Employee ID is required for subtask',
+        'string.pattern.base': 'Invalid employee ID format',
+      }),
   });
 
   const { error, value } = subtaskValidationSchema.validate(req.body);
@@ -385,6 +488,13 @@ exports.addNewSubtask = catchAsync(async (req, res, next) => {
 
   const task = await EmployeeTask.findOne({ _id: req.params.id, status: 'active' });
   if (!task) return next(new AppError('Task not found', 404));
+
+  // Validate employee exists and is part of main task
+  await validateEmployees([value.employeeID]);
+
+  if (!task.employeeIDs.some((eid) => eid.toString() === value.employeeID)) {
+    return next(new AppError('Subtask employee must be part of the main task assignees', 403));
+  }
 
   task.subtasks.push(value);
   await task.save();
@@ -397,16 +507,25 @@ exports.addNewSubtask = catchAsync(async (req, res, next) => {
   });
 });
 
-// ADMIN: Add attachment
+// ==================== ADMIN: Add attachment ====================
 exports.addAttachment = catchAsync(async (req, res, next) => {
+  if (!mongoose.isValidObjectId(req.params.id)) {
+    return next(new AppError('Invalid task ID', 422));
+  }
+
+  const { error, value } = fileAttachmentValidationSchema.validate(req.body);
+  if (error) return next(new AppError(error.details[0].message, 400));
+
   const task = await EmployeeTask.findOne({ _id: req.params.id, status: 'active' });
   if (!task) return next(new AppError('Task not found', 404));
 
-  const clientFileName = req.body.attachedFile.clientFileName;
-  const fileBytes = req.body.attachedFile.fileAsDataURL.split(',')[1];
-  const fileNameOnServerDisk = await uploadDataFile(fileBytes, 'employees', clientFileName);
+  const fileBytes = value.fileAsDataURL.split(',')[1];
+  const fileNameOnServerDisk = await uploadDataFile(fileBytes, 'employees', value.clientFileName);
 
-  task.attachments.push({ clientFileName, fileNameOnServerDisk });
+  task.attachments.push({
+    clientFileName: value.clientFileName,
+    fileNameOnServerDisk,
+  });
   await task.save();
 
   const updatedTask = await EmployeeTask.findById(task._id).populate(popObj);
@@ -417,23 +536,32 @@ exports.addAttachment = catchAsync(async (req, res, next) => {
   });
 });
 
-// ADMIN: Delete attachment
+// ==================== ADMIN: Delete attachment ====================
 exports.deleteAttachment = catchAsync(async (req, res, next) => {
+  const schema = Joi.object({
+    employeeTaskObjectId: Joi.string().pattern(/^[0-9a-fA-F]{24}$/).required(),
+    fileObjectId: Joi.string().pattern(/^[0-9a-fA-F]{24}$/).required(),
+    fileNameOnServerDisk: Joi.string().required(),
+  });
+
+  const { error, value } = schema.validate(req.body);
+
+  if (error) return next(new AppError(error.details[0].message, 400));
   const task = await EmployeeTask.findOne({
-    _id: req.body.employeeTaskObjectId,
+    _id: value.employeeTaskObjectId,
     status: 'active',
   });
   if (!task) return next(new AppError('Task not found', 404));
 
   await EmployeeTask.findOneAndUpdate(
-    { 'attachments._id': req.body.fileObjectId },
-    { $pull: { attachments: { _id: req.body.fileObjectId } } },
+    { 'attachments._id': value.fileObjectId },
+    { $pull: { attachments: { _id: value.fileObjectId } } },
     { new: true }
   );
 
-  await deleteDataFile('employees', req.body.fileNameOnServerDisk);
+  await deleteDataFile('employees', value.fileNameOnServerDisk);
 
-  const updatedTask = await EmployeeTask.findById(req.body.employeeTaskObjectId).populate(popObj);
+  const updatedTask = await EmployeeTask.findById(value.employeeTaskObjectId).populate(popObj);
 
   sendSuccessResponse(res, 200, logger, {
     message: 'Attachment deleted successfully',
@@ -441,21 +569,41 @@ exports.deleteAttachment = catchAsync(async (req, res, next) => {
   });
 });
 
-// ADMIN: Delete subtask
+// ==================== ADMIN: Delete subtask ====================
 exports.deleteSubtask = catchAsync(async (req, res, next) => {
+  const schema = Joi.object({
+    employeeTaskObjectId: Joi.string().pattern(/^[0-9a-fA-F]{24}$/).required().messages({
+      'any.required': 'Task ID is required',
+      'string.pattern.base': 'Invalid task ID format',
+    }),
+    subTaskObjectId: Joi.string().pattern(/^[0-9a-fA-F]{24}$/).required().messages({
+      'any.required': 'Subtask ID is required',
+      'string.pattern.base': 'Invalid subtask ID format',
+    }),
+  });
+
+  const { error, value } = schema.validate(req.body);
+  if (error) return next(new AppError(error.details[0].message, 400));
+
   const task = await EmployeeTask.findOne({
-    _id: req.body.employeeTaskObjectId,
+    _id: value.employeeTaskObjectId,
     status: 'active',
   });
   if (!task) return next(new AppError('Task not found', 404));
 
-  await EmployeeTask.findOneAndUpdate(
-    { 'subtasks._id': req.body.subTaskObjectId },
-    { $pull: { subtasks: { _id: req.body.subTaskObjectId } } },
-    { new: true }
+  // Check if subtask exists before deleting
+  const subtaskExists = task.subtasks.some(
+    (sub) => sub._id.toString() === value.subTaskObjectId
   );
+  if (!subtaskExists) {
+    return next(new AppError('Subtask not found in this task', 404));
+  }
 
-  const updatedTask = await EmployeeTask.findById(req.body.employeeTaskObjectId).populate(popObj);
+  const updatedTask = await EmployeeTask.findOneAndUpdate(
+    { _id: value.employeeTaskObjectId, 'subtasks._id': value.subTaskObjectId },
+    { $pull: { subtasks: { _id: value.subTaskObjectId } } },
+    { new: true }
+  ).populate(popObj);
 
   sendSuccessResponse(res, 200, logger, {
     message: 'Subtask deleted successfully',
@@ -463,20 +611,38 @@ exports.deleteSubtask = catchAsync(async (req, res, next) => {
   });
 });
 
-// EMPLOYEE/ADMIN: Mark subtask as complete
+// ==================== EMPLOYEE/ADMIN: Mark subtask as complete ====================
 exports.updateSubtaskStatus = catchAsync(async (req, res, next) => {
+  const schema = Joi.object({
+    employeeTaskObjectId: Joi.string().pattern(/^[0-9a-fA-F]{24}$/).required(),
+    subtaskObjectID: Joi.string().pattern(/^[0-9a-fA-F]{24}$/).required(),
+  });
+
+  const { error, value } = schema.validate(req.body);
+  if (error) return next(new AppError(error.details[0].message, 400));
+
   const task = await EmployeeTask.findOne({
-    _id: req.body.employeeTaskObjectId,
+    _id: value.employeeTaskObjectId,
     status: 'active',
   });
   if (!task) return next(new AppError('Task not found', 404));
+  console.log(value);
+  console.log(task);
+
+  // check subtask exist before updating
+  const subtaskExists = task.subtasks.some(
+    (sub) => sub._id.toString() === value.subtaskObjectID
+  );
+  if (!subtaskExists) {
+    return next(new AppError('Subtask not found in this task', 404));
+  }
 
   // Check ownership
   let isOwner = false;
   if (req.user.employee_id) {
     for (const subtask of task.subtasks) {
       if (
-        subtask._id.toString() === req.body.subtaskObjectID &&
+        subtask._id.toString() === value.subtaskObjectID &&
         subtask.employeeID.toString() === req.user.employee_id.toString()
       ) {
         isOwner = true;
@@ -490,8 +656,8 @@ exports.updateSubtaskStatus = catchAsync(async (req, res, next) => {
   }
 
   const updatedTask = await EmployeeTask.findOneAndUpdate(
-    { _id: req.body.employeeTaskObjectId, 'subtasks._id': req.body.subtaskObjectID },
-    { $set: { 'subtasks.$.subtaskStatus': 1 } },
+    { _id: value.employeeTaskObjectId, 'subtasks._id': value.subtaskObjectID },
+    { $set: { 'subtasks.$.subtaskStatus': 'completed' } },
     { new: true, runValidators: true }
   ).populate(popObj);
 
@@ -501,7 +667,7 @@ exports.updateSubtaskStatus = catchAsync(async (req, res, next) => {
   });
 });
 
-// ADMIN: Soft delete
+// ==================== ADMIN: Soft delete ====================
 exports.delete = catchAsync(async (req, res, next) => {
   if (!mongoose.isValidObjectId(req.params.id)) {
     return next(new AppError('Invalid task ID', 422));
